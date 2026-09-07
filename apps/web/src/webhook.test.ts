@@ -1,21 +1,34 @@
-import { createAnnouncementDraft } from '@mezonhook/schema';
+import { createAnnouncementDraft, toMezonContent } from '@mezonhook/schema';
 import { describe, expect, it, vi } from 'vitest';
 import { sendWebhook, validateWebhookUrl } from './webhook';
 
 describe('Mezon Channel Webhooks', () => {
   // Mutation caught: delivery no longer uses the documented Mezon envelope.
   it('sends the documented Mezon Channel Webhook envelope', async () => {
+    const draft = createAnnouncementDraft();
     const fetcher = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
-    await sendWebhook('https://webhook.mezon.ai/webhooks/123/token', createAnnouncementDraft(), fetcher);
+    await sendWebhook('https://webhook.mezon.ai/webhooks/123/token', draft, fetcher);
 
-    expect(fetcher).toHaveBeenCalledWith(
-      'https://webhook.mezon.ai/webhooks/123/token',
-      expect.objectContaining({
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: expect.stringContaining('"type":"hook"'),
-      }),
-    );
+    const [url, request] = fetcher.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://webhook.mezon.ai/webhooks/123/token');
+    expect(request.method).toBe('POST');
+    expect(request.headers).toEqual({ 'Content-Type': 'application/json' });
+    expect(JSON.parse(request.body as string)).toEqual({ type: 'hook', message: toMezonContent(draft) });
+  });
+
+  // Mutation caught: untrusted card fields reach Mezon through the converter's object spread.
+  it('strips untrusted properties from the Mezon request payload', async () => {
+    const draft = createAnnouncementDraft() as ReturnType<typeof createAnnouncementDraft> & { webhookUrl?: string; card: ReturnType<typeof createAnnouncementDraft>['card'] & { webhookUrl?: string } };
+    draft.webhookUrl = 'root-secret';
+    draft.card.webhookUrl = 'card-secret';
+    const fetcher = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+
+    await sendWebhook('https://webhook.mezon.ai/webhooks/123/token', draft, fetcher);
+
+    const [, request] = fetcher.mock.calls[0] as [string, RequestInit];
+    const payload = JSON.parse(request.body as string);
+    expect(payload).not.toHaveProperty('webhookUrl');
+    expect(payload.message.embed[0]).not.toHaveProperty('webhookUrl');
   });
 
   // Mutation caught: a non-Mezon host can make a request with a supplied token.

@@ -7,7 +7,7 @@ import {
   type MessageButtonStyle,
   type MessageDraft,
 } from '@mezonhook/schema';
-import { importDraftJson, readStoredDraft, saveDraft } from './draft-storage';
+import { importDraftJson, normalizeDraft, readStoredDraft, saveDraft } from './draft-storage';
 import { sendWebhook } from './webhook';
 
 const MAX_FIELDS = 25;
@@ -25,6 +25,17 @@ function actionClass(style: MessageButtonStyle): string {
   return `preview-action preview-action--${buttonStyles.find((item) => item.value === style)?.label.toLowerCase() ?? 'primary'}`;
 }
 
+function readFileText(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+      typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('The selected file could not be read.'));
+    });
+    reader.addEventListener('error', () => reject(new Error('The selected file could not be read.')));
+    reader.readAsText(file);
+  });
+}
+
 function App() {
   const [draft, setDraft] = useState<MessageDraft>(() => {
     const restored = readStoredDraft();
@@ -40,7 +51,7 @@ function App() {
   }, [draft]);
 
   const updateDraft = (update: (current: MessageDraft) => MessageDraft) => {
-    setDraft((current) => update(current));
+    setDraft((current) => normalizeDraft(update(current)));
   };
 
   const updateCard = (property: keyof MessageDraft['card'], value: string) => {
@@ -51,18 +62,18 @@ function App() {
   };
 
   const selectTemplate = (name: string) => {
-    setDraft(createDraftFromTemplate(name));
+    setDraft(normalizeDraft(createDraftFromTemplate(name)));
   };
 
   const importTemplate = async (file: File | undefined) => {
     if (!file) return;
     try {
-      const result = importDraftJson(await file.text());
+      const result = importDraftJson(await readFileText(file));
       if (!result.ok || !result.draft) {
         setImportError(`Unable to import template: ${result.ok ? 'The draft is missing.' : result.error}`);
         return;
       }
-      setDraft(result.draft);
+      setDraft(normalizeDraft(result.draft));
       setImportError('');
     } catch {
       setImportError('Unable to import template: The selected file could not be read.');
@@ -75,7 +86,7 @@ function App() {
       setImportError(`Unable to export template: ${validation.errors.join(' ')}`);
       return;
     }
-    const blob = new Blob([JSON.stringify(draft, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(normalizeDraft(draft), null, 2)], { type: 'application/json' });
     const href = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = href;

@@ -1,4 +1,5 @@
 import { type MessageDraft, toMezonContent, validateDraft } from '@mezonhook/schema';
+import { normalizeDraft } from './draft-storage';
 
 export function validateWebhookUrl(value: string): boolean {
   try {
@@ -22,13 +23,14 @@ export function validateWebhookUrl(value: string): boolean {
 export async function sendWebhook(url: string, draft: MessageDraft, fetcher: typeof fetch = fetch): Promise<void> {
   if (!validateWebhookUrl(url)) throw new Error('Enter a valid Mezon Channel Webhook URL.');
   if (!validateDraft(draft).valid) throw new Error('This message draft is invalid. Please correct it before sending.');
+  const sanitizedDraft = normalizeDraft(draft);
 
   let response: Response;
   try {
     response = await fetcher(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'hook', message: toMezonContent(draft) }),
+      body: JSON.stringify({ type: 'hook', message: toMezonContent(sanitizedDraft) }),
     });
   } catch {
     throw new Error('Could not reach Mezon. Check your connection or browser CORS settings and try again.');

@@ -29,4 +29,25 @@ describe('local draft storage', () => {
     expect(importDraftJson('{bad JSON')).toMatchObject({ ok: false });
     expect(importDraftJson(JSON.stringify({ body: '' }))).toMatchObject({ ok: false });
   });
+
+  // Mutation caught: accepted JSON extra properties, including secrets, survive into local storage.
+  it('strips untrusted root and card properties before importing or persisting a draft', () => {
+    const draft = createAnnouncementDraft() as MessageDraftWithUntrustedProperties;
+    draft.webhookUrl = 'https://webhook.mezon.ai/webhooks/123/root-secret';
+    draft.card.webhookUrl = 'https://webhook.mezon.ai/webhooks/123/card-secret';
+
+    const imported = importDraftJson(JSON.stringify(draft));
+
+    expect(imported).toMatchObject({ ok: true });
+    expect(imported.ok && imported.draft).not.toHaveProperty('webhookUrl');
+    expect(imported.ok && imported.draft?.card).not.toHaveProperty('webhookUrl');
+    expect(saveDraft(draft)).toEqual({ ok: true });
+    expect(JSON.parse(localStorage.getItem(DRAFT_STORAGE_KEY) ?? '{}')).not.toHaveProperty('webhookUrl');
+    expect(JSON.parse(localStorage.getItem(DRAFT_STORAGE_KEY) ?? '{}').card).not.toHaveProperty('webhookUrl');
+  });
 });
+
+type MessageDraftWithUntrustedProperties = ReturnType<typeof createAnnouncementDraft> & {
+  webhookUrl?: string;
+  card: ReturnType<typeof createAnnouncementDraft>['card'] & { webhookUrl?: string };
+};

@@ -1,13 +1,25 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
+
+function readBlobText(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+      typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('The exported template could not be read.'));
+    });
+    reader.addEventListener('error', () => reject(new Error('The exported template could not be read.')));
+    reader.readAsText(blob);
+  });
+}
 
 afterEach(() => {
   cleanup();
   localStorage.clear();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('MezonHook editor', () => {
@@ -89,5 +101,62 @@ describe('MezonHook editor', () => {
     expect(await screen.findByText('Message sent to Mezon.')).toBeInTheDocument();
     expect(screen.getByLabelText('Channel webhook URL')).toHaveValue('');
     expect(fetcher).toHaveBeenCalledOnce();
+  });
+
+  // Mutation caught: imported secret-like fields enter storage, downloaded templates, or the browser POST body.
+  it('strips imported webhookUrl properties before storing, exporting, and sending', async () => {
+    const user = userEvent.setup();
+    const maliciousTemplate = {
+      body: 'A sanitized body',
+      card: {
+        color: '#5865F2',
+        title: 'Sanitized title',
+        description: 'A sanitized description.',
+        author: '',
+        thumbnail: '',
+        image: '',
+        fields: [],
+        webhookUrl: 'card-secret',
+      },
+      buttons: [{ id: 'learn-more', label: 'Learn more', style: 1 }],
+      webhookUrl: 'root-secret',
+    };
+    const fetcher = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 204 }));
+    render(<App />);
+
+    await user.upload(
+      screen.getByLabelText('Import template'),
+      new File([JSON.stringify(maliciousTemplate)], 'malicious-template.json', { type: 'application/json' }),
+    );
+    await screen.findByDisplayValue('Sanitized title');
+
+    const stored = JSON.parse(localStorage.getItem('mezonhook:draft:v1') ?? '{}');
+    expect(stored).not.toHaveProperty('webhookUrl');
+    expect(stored.card).not.toHaveProperty('webhookUrl');
+
+    let exportedBlob: Blob | undefined;
+    class TestUrl extends URL {
+      static createObjectURL(blob: Blob) {
+        exportedBlob = blob;
+        return 'blob:template';
+      }
+
+      static revokeObjectURL() {}
+    }
+    vi.stubGlobal('URL', TestUrl);
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    await user.click(screen.getByRole('button', { name: 'Export template' }));
+    await waitFor(() => expect(exportedBlob).toBeDefined());
+    const exported = JSON.parse(await readBlobText(exportedBlob!));
+    expect(exported).not.toHaveProperty('webhookUrl');
+    expect(exported.card).not.toHaveProperty('webhookUrl');
+
+    await user.type(screen.getByLabelText('Channel webhook URL'), 'https://webhook.mezon.ai/webhooks/123/token');
+    await user.click(screen.getByRole('button', { name: 'Send message' }));
+    const [, request] = fetcher.mock.calls[0] as [string, RequestInit];
+    const payload = JSON.parse(request.body as string);
+    expect(payload).toMatchObject({ type: 'hook' });
+    expect(payload).not.toHaveProperty('webhookUrl');
+    expect(payload.message.embed[0]).not.toHaveProperty('webhookUrl');
   });
 });
