@@ -2,7 +2,7 @@
 
 MezonHook is a browser-based editor for drafting and previewing rich Mezon Channel Webhook messages. It is a static Vite/React application; it does not provide a hosted service, server API, or dashboard.
 
-Start from one of three built-in templates—Announcement, Release note, or Event invitation—then edit the message body, embed-style card, fields, and actions. The preview follows the public Mezon message and interactive-component sources: [Message](https://github.com/mezonai/mezon-js/blob/master/packages/mezon-sdk/src/mezon-client/structures/Message.ts), [interactive-message guide](https://docs.mezon.ai/developer/mezon-topics/interactive-message), and [Channel Webhook guide](https://docs.mezon.ai/developer/webhooks/channel-webhook).
+Start from one of three built-in templates—Announcement, Release note, or Event invitation—then edit the message body, embed-style card, fields, and actions. The preview follows the public Mezon message and interactive-component sources: [Message](https://github.com/mezonai/mezon-js/blob/master/packages/mezon-sdk/src/mezon-client/structures/Message.ts), [interactive-message guide](https://mezon.ai/docs/vi/developer/mezon-topics/interactive-message/), and [Channel Webhook guide](https://mezon.ai/docs/vi/developer/webhooks/channel-webhook/).
 
 Drafts are saved locally in the browser under a versioned key and can be exported to or imported from JSON. MezonHook can send a draft directly to a Mezon Channel Webhook at:
 

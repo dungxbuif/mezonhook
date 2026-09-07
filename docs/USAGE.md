@@ -4,7 +4,7 @@ MezonHook creates a rich-message draft in your browser, previews it in a Mezon-i
 
 ## Create and copy a Channel Webhook
 
-In Mezon, open the target channel, use **Edit Channel**, then open the **Integrations** tab. Choose **New Webhook**, optionally set the webhook bot name and avatar, and use **Copy Webhook URL**. You need to be a member of a clan and have access to that channel. These steps and the endpoint format are defined in the [official Channel Webhook documentation](https://docs.mezon.ai/developer/webhooks/channel-webhook).
+In Mezon, open the target channel, use **Edit Channel**, then open the **Integrations** tab. Choose **New Webhook**, optionally set the webhook bot name and avatar, and use **Copy Webhook URL**. You need to be a member of a clan and have access to that channel. These steps and the endpoint format are defined in the [official Vietnamese Channel Webhook documentation](https://mezon.ai/docs/vi/developer/webhooks/channel-webhook/).
 
 Treat the copied URL as a password. Do not paste it into source code, a ticket, a chat message, a screenshot, or an exported template.
 
