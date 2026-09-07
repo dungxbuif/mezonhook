@@ -97,28 +97,38 @@ git add apps/web
 git commit -m "feat: add webhook builder editor"
 ```
 
-### Task 3: Local drafts, import/export, and integration verification
+### Task 3: Local drafts, import/export, webhook send, and integration verification
 
 **Files:**
+- Create: `apps/web/src/draft-storage.ts`, `apps/web/src/draft-storage.test.ts`, `apps/web/src/webhook.ts`, `apps/web/src/webhook.test.ts`
 - Modify: `apps/web/src/App.tsx`, `apps/web/src/App.test.tsx`, `apps/web/src/styles.css`
 
 **Interfaces:**
 - Consumes: `validateDraft()` and `toMezonContent()` from `@mezonhook/schema`.
-- Produces: Versioned local draft persistence and safe JSON import/export.
+- Produces: Versioned local draft persistence, safe JSON import/export, and direct Mezon Channel Webhook delivery without persistent credentials.
 
-- [ ] **Step 1: Write failing tests for reload persistence and invalid import rejection**
+- [ ] **Step 1: Write failing tests for reload persistence, invalid import rejection, and webhook request formation**
 
 ```tsx
 expect(window.localStorage.getItem('mezonhook:draft:v1')).toContain('Announcement');
 await user.upload(screen.getByLabelText('Import template'), new File(['{}'], 'draft.json'));
 expect(await screen.findByRole('alert')).toHaveTextContent('Invalid template');
+
+expect(validateWebhookUrl('https://other.example/hook')).toBe(false);
+await sendWebhook('https://webhook.mezon.ai/webhooks/123/token', draft, fetchStub);
+expect(fetchStub).toHaveBeenCalledWith(
+  'https://webhook.mezon.ai/webhooks/123/token',
+  expect.objectContaining({ method: 'POST', headers: { 'Content-Type': 'application/json' } }),
+);
 ```
 
 - [ ] **Step 2: Run the tests and verify they fail for missing persistence/import behavior**
 
 Run: `npm test --workspace @mezonhook/web`
 
-- [ ] **Step 3: Add versioned `localStorage` persistence, validated import, JSON download export, and send-boundary copy**
+- [ ] **Step 3: Add versioned `localStorage` persistence, validated import, JSON download export, and a Mezon Channel Webhook send form**
+
+The send form keeps the webhook URL in component memory only. It rejects URLs other than `https://webhook.mezon.ai/webhooks/{channelId}/{token}`, validates the draft, and sends `JSON.stringify({ type: 'hook', message: toMezonContent(draft) })` using `POST` and `Content-Type: application/json`. Display success, HTTP failure, network failure, and CORS failure feedback without exposing or persisting the token.
 
 - [ ] **Step 4: Run full tests and production build**
 
