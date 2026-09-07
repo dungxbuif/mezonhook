@@ -248,7 +248,8 @@ export function validateProject(project: unknown): ValidationResult {
   } else {
     const ids = new Set<string>();
     for (const target of project.targets) {
-      if (!isRecord(target) || !isStringWithin(target.id, 100, true) || !isStringWithin(target.name, 100, true)) {
+      if (!isRecord(target) || typeof target.id !== 'string' || typeof target.name !== 'string'
+        || !isStringWithin(target.id, 100, true) || !isStringWithin(target.name, 100, true)) {
         errors.push('Each target must have an id and name of 100 characters or fewer.');
         break;
       }

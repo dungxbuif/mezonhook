@@ -24,6 +24,8 @@ docker run --rm -p 8080:8080 mezonhook:local
 
 Open `http://localhost:8080`. The runtime is an unprivileged nginx Alpine image and serves only the built `apps/web/dist` assets.
 
+The maintained demo is available at [https://mezonhook.dungxbuif.com](https://mezonhook.dungxbuif.com). Its reverse proxy routes HTTPS traffic to the Docker container; deploy a rebuilt image after `npm test` and the web production build succeed.
+
 ## Sending to Mezon and CORS
 
 Users configure a Channel Webhook in Mezon, copy its URL, and paste it into MezonHook for the current browser session. The URL has the form `https://webhook.mezon.ai/webhooks/{channelId}/{token}` and is sent directly from the browser to Mezon.

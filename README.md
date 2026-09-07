@@ -1,16 +1,16 @@
 # MezonHook
 
-MezonHook is a browser-based editor for drafting and previewing rich Mezon Channel Webhook messages. It is a static Vite/React application; it does not provide a hosted service, server API, or dashboard.
+MezonHook is a browser-based, Discohook-inspired workspace for building and previewing ordered Mezon Channel Webhook message projects. It is a static Vite/React application; it does not provide a hosted service, server API, or dashboard.
 
 Start from one of three built-in templates—Announcement, Release note, or Event invitation—then edit the message body, embed-style card, fields, and actions. The preview follows the public Mezon message and interactive-component sources: [Message](https://github.com/mezonai/mezon-js/blob/master/packages/mezon-sdk/src/mezon-client/structures/Message.ts), [interactive-message guide](https://mezon.ai/docs/vi/developer/mezon-topics/interactive-message/), and [Channel Webhook guide](https://mezon.ai/docs/vi/developer/webhooks/channel-webhook/).
 
-Drafts are saved locally in the browser under a versioned key and can be exported to or imported from JSON. MezonHook can send a draft directly to a Mezon Channel Webhook at:
+Projects support up to 20 messages and 10 named webhook targets. They are saved locally and can be exported/imported as JSON. MezonHook sends every project message in order to each selected target. Try the live deployment at [mezonhook.dungxbuif.com](https://mezonhook.dungxbuif.com).
 
 ```
 https://webhook.mezon.ai/webhooks/{channelId}/{token}
 ```
 
-Webhook URLs are treated as credentials: MezonHook keeps them only in session memory. They are never included in local drafts or JSON exports.
+Webhook URLs are treated as credentials: MezonHook keeps them only in session memory. They are never included in local projects or JSON exports.
 
 ## Prerequisites
 

@@ -1,6 +1,6 @@
 # Using MezonHook
 
-MezonHook creates a rich-message draft in your browser, previews it in a Mezon-inspired layout, and sends it to a Mezon Channel Webhook. It does not store your webhook URL in a draft or exported file.
+MezonHook creates a webhook project in your browser: an ordered sequence of rich messages and named delivery targets. It previews the sequence in a Mezon-inspired layout and does not store webhook URLs in a project or exported file.
 
 ## Create and copy a Channel Webhook
 
@@ -8,14 +8,16 @@ In Mezon, open the target channel, use **Edit Channel**, then open the **Integra
 
 Treat the copied URL as a password. Do not paste it into source code, a ticket, a chat message, a screenshot, or an exported template.
 
-## Draft, preview, and send
+## Build, preview, and send a project
 
 1. Open your local MezonHook instance or deployment.
 2. Choose Announcement, Release note, or Event invitation to begin with a template.
 3. Edit the body, card details, fields, and actions. Review the Mezon-style preview as you work.
-4. Use **Export template** to download the current draft as JSON, or **Import template** to load a previously exported valid draft. Exports contain draft content only—not the webhook URL.
-5. Paste the Channel Webhook URL into the password-masked field. It stays only in current session memory and is cleared after a successful send.
-6. Select **Send to Mezon** and verify the result in the target channel.
+4. Add, duplicate, delete, or reorder messages in the message rail. The preview shows the complete send order.
+5. Open **Config**, name targets, paste each URL into its password-masked field, and select the targets to receive the project. URLs stay only in current session memory.
+6. Use **Export project** to download JSON, or **Import project** to load a project. Exports contain content and target names only—not webhook URLs.
+7. Select **Send project**. Delivery stops on the first failure, so earlier messages may already have arrived; fix the error and resend only the messages you intend to repeat.
+8. Open **Help** in the app for this workflow and official Mezon docs.
 
 ## CORS and network troubleshooting
 
