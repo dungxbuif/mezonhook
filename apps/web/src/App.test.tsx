@@ -38,6 +38,20 @@ describe('MezonHook project builder', () => {
     expect(screen.getByLabelText('Card title')).toBeInTheDocument();
   });
 
+  // Mutation caught: documented Mezon interactive fields can no longer be added, edited, or previewed.
+  it('adds and previews a documented Select interactive field', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: 'Fields' }));
+    await user.click(screen.getByRole('button', { name: 'Add Select' }));
+
+    expect(screen.getByLabelText('Interactive ID')).toHaveValue('select-1');
+    expect(screen.getByTestId('interactive-preview-2')).toHaveTextContent('New option');
+    await user.click(screen.getByRole('button', { name: 'Remove interactive block 1' }));
+    expect(screen.queryByTestId('interactive-preview-2')).not.toBeInTheDocument();
+  });
+
   // Mutation caught: the builder loses its independently addressable two-pane project workspace.
   it('exposes the sequential project editor and preview as one builder workspace', () => {
     render(<App />);

@@ -33,6 +33,39 @@ describe('Mezon message schema', () => {
     expect(normalized.messages[0].card).not.toHaveProperty('extra');
   });
 
+  it('keeps only documented interactive field inputs in normalized Mezon payloads', () => {
+    const project = createWebhookProject();
+    project.messages[0].card.fields = [
+      { name: 'Response', value: 'Tell us more.', inline: false, inputs: { id: 'response', type: 3, component: { id: 'response-component', placeholder: 'Write a response', defaultValue: '', type: 'text', textarea: true, disabled: false, webhookUrl: 'discard' }, webhookUrl: 'discard' } },
+      { name: 'Choose one', value: '', inline: false, inputs: { id: 'choice', type: 2, component: { options: [{ label: 'First', value: 'first', webhookUrl: 'discard' }], valueSelected: 'first', webhookUrl: 'discard' } } },
+      { name: 'Vote', value: '', inline: false, inputs: { id: 'vote', type: 5, component: [{ label: 'Yes', value: 'yes', name: 'Vote', description: 'Approve it', style: 1, disabled: false, webhookUrl: 'discard' }], max_options: 1, webhookUrl: 'discard' } },
+      { name: 'Date', value: '', inline: false, inputs: { id: 'date', type: 4, component: { webhookUrl: 'discard' } } },
+      { name: '', value: '', inline: false, inputs: { id: 'animation', type: 6, component: { url_image: 'https://cdn.mezon.ai/image.png', url_position: 'https://cdn.mezon.ai/position.json', pool: ['one'], repeat: 2, duration: 500, webhookUrl: 'discard' } } },
+    ] as never;
+
+    const normalized = normalizeProject(project);
+    const expected = [
+      { name: 'Response', value: 'Tell us more.', inline: false, inputs: { id: 'response', type: 3, component: { id: 'response-component', placeholder: 'Write a response', defaultValue: '', type: 'text', textarea: true, disabled: false } } },
+      { name: 'Choose one', value: '', inline: false, inputs: { id: 'choice', type: 2, component: { options: [{ label: 'First', value: 'first' }], valueSelected: 'first' } } },
+      { name: 'Vote', value: '', inline: false, inputs: { id: 'vote', type: 5, component: [{ label: 'Yes', value: 'yes', name: 'Vote', description: 'Approve it', style: 1, disabled: false }], max_options: 1 } },
+      { name: 'Date', value: '', inline: false, inputs: { id: 'date', type: 4, component: {} } },
+      { name: '', value: '', inline: false, inputs: { id: 'animation', type: 6, component: { url_image: 'https://cdn.mezon.ai/image.png', url_position: 'https://cdn.mezon.ai/position.json', pool: ['one'], repeat: 2, duration: 500 } } },
+    ];
+
+    expect(normalized.messages[0].card.fields).toEqual(expected);
+    expect(validateDraft(normalized.messages[0])).toEqual({ valid: true, errors: [] });
+    expect(toMezonContent(normalized.messages[0]).embed[0].fields).toEqual(expected);
+    expect(JSON.stringify(normalized)).not.toContain('webhookUrl');
+    expect(JSON.stringify(toMezonContent(normalized.messages[0]))).not.toContain('webhookUrl');
+  });
+
+  it('rejects undocumented Grid interactive inputs', () => {
+    const draft = createAnnouncementDraft();
+    draft.card.fields = [{ name: 'Unsupported', value: '', inline: false, inputs: { id: 'grid', type: 7, component: {} } }] as never;
+
+    expect(validateDraft(draft).valid).toBe(false);
+  });
+
   it('rejects project message and target bounds', () => {
     const project = createWebhookProject();
     project.messages = [];
