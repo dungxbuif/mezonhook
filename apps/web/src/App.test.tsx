@@ -78,7 +78,7 @@ describe('MezonHook editor', () => {
 
     await user.upload(templateInput, invalidFile);
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Unable to import');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to import');
     expect(screen.getByTestId('message-preview')).toHaveTextContent('Announcement');
   });
 
