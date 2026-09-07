@@ -72,6 +72,20 @@ describe('Mezon message schema', () => {
     expect(validateDraft(draft)).toMatchObject({ valid: false });
   });
 
+  it('accepts the highest documented button style', () => {
+    const draft = createAnnouncementDraft();
+    draft.buttons[0].style = 5;
+
+    expect(validateDraft(draft).valid).toBe(true);
+  });
+
+  it.each([0, 6])('rejects button style %i', (style) => {
+    const draft = createAnnouncementDraft();
+    draft.buttons[0].style = style as never;
+
+    expect(validateDraft(draft).valid).toBe(false);
+  });
+
   it('exports a detached Mezon content snapshot', () => {
     const draft = createAnnouncementDraft();
     draft.card.fields = [{ name: 'Before', value: 'Value', inline: false }];

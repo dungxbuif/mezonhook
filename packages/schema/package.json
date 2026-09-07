@@ -5,17 +5,19 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
     }
   },
-  "types": "./dist/index.d.ts",
+  "types": "./src/index.ts",
   "files": [
+    "src",
     "dist"
   ],
   "scripts": {
     "build": "tsc --project tsconfig.json",
-    "test": "npm run build && vitest run"
+    "test": "vitest run && npm run test:consumer",
+    "test:consumer": "node scripts/test-consumer.mjs"
   },
   "devDependencies": {
     "typescript": "^5.7.3",
