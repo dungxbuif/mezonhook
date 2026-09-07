@@ -46,6 +46,17 @@ describe('MezonHook project builder', () => {
     expect(screen.getAllByTestId('message-preview')).toHaveLength(2);
   });
 
+  // Mutation caught: template actions remain in the builder or a new message is pre-filled as a template.
+  it('adds a blank message without exposing template actions', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(screen.queryByRole('button', { name: 'Release note' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Add Message' }));
+
+    expect(within(screen.getAllByTestId(/message-editor-/)[1]).getByLabelText('Body')).toHaveValue('');
+  });
+
   // Mutation caught: sequential editor headers do not update the shared project delivery order after a native drag-and-drop.
   it('reorders project messages by dragging a sequential editor header', async () => {
     const user = userEvent.setup();

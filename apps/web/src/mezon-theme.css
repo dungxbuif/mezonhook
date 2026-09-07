@@ -1,0 +1,38 @@
+/* Local Mezon-inspired semantic theme layer. Values and rules are authored for MezonHook. */
+:root {
+  --mz-bg-primary: #26282f;
+  --mz-bg-direct-message: #2f3138;
+  --mz-bg-setting-nav: #24262c;
+  --mz-bg-setting-primary: #30323a;
+  --mz-bg-input: #202229;
+  --mz-bg-surface: #383b45;
+  --mz-bg-hover: rgb(255 255 255 / 8%);
+  --mz-bg-selected: rgb(255 255 255 / 11%);
+  --mz-text-primary: #f1f2f5;
+  --mz-text-muted: #b3b6c2;
+  --mz-text-link: #78abff;
+  --mz-border: rgb(255 255 255 / 12%);
+  --mz-border-focus: #78aaff;
+  --mz-button-primary: #4a72d7;
+  --mz-button-secondary: #555b66;
+  --mz-button-success: #3c9b65;
+  --mz-button-danger: #bc5963;
+  --mz-button-link: #3c78bd;
+  --mz-danger: #ed7d87;
+  --mz-success: #66c58a;
+}
+
+.bg-theme-primary { background: var(--mz-bg-primary); }
+.bg-theme-direct-message { background: var(--mz-bg-direct-message); }
+.bg-theme-setting-nav { background: var(--mz-bg-setting-nav); }
+.bg-theme-setting-primary { background: var(--mz-bg-setting-primary); }
+.bg-theme-input-primary { background: var(--mz-bg-input); }
+.bg-theme-surface { background: var(--mz-bg-surface); }
+.bg-item-hover:hover:not(:disabled) { background: var(--mz-bg-hover); }
+.bg-item-msg-selected { background: var(--mz-bg-selected); }
+.border-theme-primary { border-color: var(--mz-border); }
+.border-b-theme-primary { box-shadow: inset 0 -1px 0 var(--mz-border); }
+.border-left-theme-primary { border-left: 1px solid var(--mz-border); }
+.color-theme-primary { color: var(--mz-text-primary); }
+.color-theme-muted { color: var(--mz-text-muted); }
+.color-mention { color: var(--mz-text-link); }
