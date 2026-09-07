@@ -12,6 +12,8 @@ The MVP provides a browser-based editor with a live Mezon-like preview. It suppo
 
 Use an npm-workspaces monorepo. `apps/web` is a Vite + React + TypeScript application. `packages/schema` contains framework-free message types, defaults, validation, templates, and JSON serialization so a future API app can consume the same contract. `apps/api` is intentionally absent from the first commit: adding an empty service would create a deployment and security surface before its endpoint contract exists.
 
+The preview is an intentional, self-contained adaptation of the public Mezon React client, rather than a Discohook imitation: `mezon/libs/components/.../EmbedMessage/EmbedMessage.tsx` supplies the card structure (520px max width, color rail, author/title/description/fields/thumbnail/image/footer order), `EmbedFields.tsx` supplies its one-to-three-column inline-field grouping, and `MessageActionsPanel`/`MessageButton` supplies action-row and style semantics. MezonHook does not import the Mezon Nx libraries because they depend on the full chat store/runtime; it reproduces only this public rendering contract in its own small components and CSS.
+
 The editor owns a `MessageDraft` value. Form controls dispatch immutable updates; the preview receives only that value. `localStorage` stores a versioned JSON document after every valid change. Import validates before replacing the current draft. This keeps the initial application entirely client-side and means tokens never enter browser storage.
 
 ## Mezon contract

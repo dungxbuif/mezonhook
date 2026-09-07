@@ -16,6 +16,7 @@
 - Do not store credentials or claim an undocumented sending endpoint.
 - Render message text as text, not HTML.
 - Use the documented Mezon rich-card and button shape as the export basis.
+- Adapt the preview from `/Users/dungxbuif/workspace/mezon/libs/components/src/lib/components/EmbedMessage/EmbedMessage.tsx`, `EmbedFields.tsx`, and `MessageActionsPanel`; preserve the 520px card, left color rail, field grouping, and five Mezon button styles.
 
 ---
 
