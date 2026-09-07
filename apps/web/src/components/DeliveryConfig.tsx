@@ -1,0 +1,12 @@
+import type { FormEvent } from 'react';
+import type { WebhookProject } from '@mezonhook/schema';
+
+type DeliveryConfigProps = {
+  targets: WebhookProject['targets']; selectedTargetIds: string[]; targetUrls: Record<string, string>; sending: boolean;
+  status: { kind: 'success' | 'error'; message: string } | null;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void; onToggleTarget: (id: string, checked: boolean) => void; onTargetNameChange: (id: string, name: string) => void; onTargetUrlChange: (id: string, url: string) => void; onAddTarget: () => void; onRemoveTarget: (id: string) => void;
+};
+
+export function DeliveryConfig({ targets, selectedTargetIds, targetUrls, sending, status, onSubmit, onToggleTarget, onTargetNameChange, onTargetUrlChange, onAddTarget, onRemoveTarget }: DeliveryConfigProps) {
+  return <section className="screen-panel config-panel" aria-labelledby="config-title"><p className="eyebrow">Configuration</p><h2 id="config-title">Delivery targets</h2><p className="editor-intro">Target URLs stay only in this browser session. They are masked, excluded from project files, and cleared after a successful send.</p><form onSubmit={onSubmit} className="target-list">{targets.map((target) => <div className="target-row" key={target.id}><label className="target-select"><input type="checkbox" checked={selectedTargetIds.includes(target.id)} onChange={(event) => onToggleTarget(target.id, event.target.checked)} /><span>Send to this target</span></label><label><span>Target name</span><input value={target.name} onChange={(event) => onTargetNameChange(target.id, event.target.value)} /></label><label><span>Webhook URL for {target.name}</span><input type="password" autoComplete="off" value={targetUrls[target.id] ?? ''} onChange={(event) => onTargetUrlChange(target.id, event.target.value)} placeholder="https://webhook.mezon.ai/webhooks/..." /></label><button type="button" className="remove-button" onClick={() => onRemoveTarget(target.id)} disabled={targets.length <= 1}>Remove target</button></div>)}<div className="target-actions"><button type="button" className="secondary-button" onClick={onAddTarget} disabled={targets.length >= 10}>Add target</button><button type="submit" className="add-button" disabled={sending}>{sending ? 'Sending…' : 'Send project'}</button></div></form>{status && <p className={status.kind === 'error' ? 'form-alert' : 'send-success'} role={status.kind === 'error' ? 'alert' : 'status'}>{status.message}</p>}</section>;
+}

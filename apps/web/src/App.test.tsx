@@ -38,6 +38,13 @@ describe('MezonHook project builder', () => {
     expect(screen.getByLabelText('Card title')).toBeInTheDocument();
   });
 
+  // Mutation caught: the builder loses its independently addressable two-pane project workspace.
+  it('exposes the sequential project editor and preview as one builder workspace', () => {
+    render(<App />);
+
+    expect(screen.getByTestId('project-editor')).toHaveAttribute('data-builder-layout', 'two-pane-sequence');
+  });
+
   // Mutation caught: adding a project message does not add it to the ordered preview sequence.
   it('adds a message and renders both messages in sequence preview', async () => {
     const user = userEvent.setup();
