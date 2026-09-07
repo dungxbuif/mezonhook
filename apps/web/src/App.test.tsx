@@ -38,6 +38,20 @@ describe('MezonHook project builder', () => {
     expect(screen.getByLabelText('Card title')).toBeInTheDocument();
   });
 
+  // Mutation caught: visual accordion sections drift into bespoke, nested heading controls.
+  it('uses one compact semantic header primitive for every composer section', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const labels = ['Content', 'Embeds', 'Fields', 'Components', 'Advanced'];
+
+    for (const label of labels) expect(screen.getByRole('button', { name: label })).toHaveClass('accordion-header');
+
+    await user.click(screen.getByRole('button', { name: 'Fields' }));
+    await user.click(screen.getByRole('button', { name: 'Components' }));
+    expect(document.querySelector('#message-0-fields h2')).toBeNull();
+    expect(document.querySelector('#message-0-components h2')).toBeNull();
+  });
+
   // Mutation caught: documented Mezon interactive fields can no longer be added, edited, or previewed.
   it('adds and previews a documented Select interactive field', async () => {
     const user = userEvent.setup();
