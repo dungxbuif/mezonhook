@@ -1,14 +1,53 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  cloneProject,
   createAnnouncementDraft,
   createDraftFromTemplate,
+  createWebhookProject,
   messageTemplates,
+  normalizeProject,
   toMezonContent,
   validateDraft,
+  validateProject,
 } from '@mezonhook/schema';
 
 describe('Mezon message schema', () => {
+  it('creates a project with one editable message and one target slot', () => {
+    const project = createWebhookProject();
+
+    expect(project.messages).toHaveLength(1);
+    expect(project.targets).toEqual([{ id: 'target-1', name: 'Mezon channel' }]);
+  });
+
+  it('normalizes nested untrusted project properties', () => {
+    const project = createWebhookProject() as ReturnType<typeof createWebhookProject> & {
+      webhookUrl?: string;
+      messages: Array<ReturnType<typeof createAnnouncementDraft> & { card: ReturnType<typeof createAnnouncementDraft>['card'] & { extra?: string } }>;
+    };
+    project.webhookUrl = 'secret';
+    project.messages[0].card.extra = 'discard';
+
+    const normalized = normalizeProject(project);
+    expect(normalized).not.toHaveProperty('webhookUrl');
+    expect(normalized.messages[0].card).not.toHaveProperty('extra');
+  });
+
+  it('rejects project message and target bounds', () => {
+    const project = createWebhookProject();
+    project.messages = [];
+
+    expect(validateProject(project).valid).toBe(false);
+  });
+
+  it('creates a detached editable project clone', () => {
+    const original = createWebhookProject();
+    const clone = cloneProject(original);
+    clone.messages[0].card.title = 'Changed';
+
+    expect(original.messages[0].card.title).toBe('Announcement');
+  });
+
   it('exports an announcement as Mezon rich content', () => {
     const content = toMezonContent(createAnnouncementDraft());
 

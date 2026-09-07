@@ -33,6 +33,18 @@ export interface MessageTemplate {
   draft: ReadonlyMessageDraft;
 }
 
+export interface WebhookTarget {
+  id: string;
+  name: string;
+}
+
+export interface WebhookProject {
+  version: 2;
+  name: string;
+  messages: MessageDraft[];
+  targets: WebhookTarget[];
+}
+
 export interface ReadonlyMessageDraft {
   readonly body: string;
   readonly card: Omit<Readonly<MessageCard>, 'fields'> & {
@@ -69,11 +81,46 @@ function cloneDraft(draft: ReadonlyMessageDraft): MessageDraft {
   return {
     body: draft.body,
     card: {
-      ...draft.card,
-      fields: draft.card.fields.map((field) => ({ ...field })),
+      color: draft.card.color,
+      title: draft.card.title,
+      description: draft.card.description,
+      author: draft.card.author,
+      thumbnail: draft.card.thumbnail,
+      image: draft.card.image,
+      fields: draft.card.fields.map((field) => ({ name: field.name, value: field.value, inline: field.inline })),
     },
-    buttons: draft.buttons.map((button) => ({ ...button })),
+    buttons: draft.buttons.map((button) => ({ id: button.id, label: button.label, style: button.style })),
   };
+}
+
+export function createMessageId(position: number): string {
+  return `message-${position}`;
+}
+
+export function createTargetId(position: number): string {
+  return `target-${position}`;
+}
+
+export function createWebhookProject(): WebhookProject {
+  return {
+    version: 2,
+    name: 'Untitled webhook project',
+    messages: [createAnnouncementDraft()],
+    targets: [{ id: createTargetId(1), name: 'Mezon channel' }],
+  };
+}
+
+export function cloneProject(project: WebhookProject): WebhookProject {
+  return {
+    version: 2,
+    name: project.name,
+    messages: project.messages.map((message) => cloneDraft(message)),
+    targets: project.targets.map((target) => ({ id: target.id, name: target.name })),
+  };
+}
+
+export function normalizeProject(project: WebhookProject): WebhookProject {
+  return cloneProject(project);
 }
 
 function freezeTemplate(name: string, draft: MessageDraft): MessageTemplate {
@@ -179,6 +226,38 @@ export function validateDraft(draft: unknown): ValidationResult {
     || !isStringWithin(button.label, 80, true)
     || ![1, 2, 3, 4, 5].includes(button.style as number))) {
     errors.push('Each button must have a valid id, label, and style.');
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+export function validateProject(project: unknown): ValidationResult {
+  if (!isRecord(project)) return { valid: false, errors: ['Project must be an object.'] };
+
+  const errors: string[] = [];
+  if (project.version !== 2) errors.push('Project version must be 2.');
+  if (!isStringWithin(project.name, 100, true)) errors.push('Project name is required and must be 100 characters or fewer.');
+  if (!Array.isArray(project.messages) || project.messages.length < 1 || project.messages.length > 20) {
+    errors.push('A project must have between 1 and 20 messages.');
+  } else if (project.messages.some((message) => !validateDraft(message).valid)) {
+    errors.push('Every project message must be valid.');
+  }
+
+  if (!Array.isArray(project.targets) || project.targets.length < 1 || project.targets.length > 10) {
+    errors.push('A project must have between 1 and 10 targets.');
+  } else {
+    const ids = new Set<string>();
+    for (const target of project.targets) {
+      if (!isRecord(target) || !isStringWithin(target.id, 100, true) || !isStringWithin(target.name, 100, true)) {
+        errors.push('Each target must have an id and name of 100 characters or fewer.');
+        break;
+      }
+      if (ids.has(target.id)) {
+        errors.push('Target IDs must be unique.');
+        break;
+      }
+      ids.add(target.id);
+    }
   }
 
   return { valid: errors.length === 0, errors };
