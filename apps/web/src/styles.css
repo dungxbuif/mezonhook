@@ -126,3 +126,53 @@ input:focus, textarea:focus, select:focus { border-color: var(--mz-border-focus)
   .target-row, .form-grid, .repeat-row, .button-row { grid-template-columns: 1fr; }
   .target-select, .inline-toggle { padding-bottom: 0; }
 }
+
+/* Dense composer shell: the editor and Mezon preview are permanent desktop peers. */
+.workspace-shell { grid-template-rows: 48px minmax(0, 1fr); }
+.channel-topbar { display: flex; min-height: 48px; justify-content: space-between; gap: 10px; padding: 0 10px; }
+.topbar-brand, .topbar-actions { display: flex; min-width: 0; align-items: center; gap: 6px; }
+.topbar-logo { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 7px; color: white; background: var(--mz-button-primary); font-size: 13px; font-weight: 800; }
+.topbar-project { overflow: hidden; max-width: min(36vw, 420px); color: var(--mz-text-primary); font-size: 13px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.topbar-button, .topbar-send { border: 0; border-radius: 4px; padding: 6px 8px; color: var(--mz-text-muted); background: transparent; font-size: 12px; font-weight: 650; cursor: pointer; }
+.topbar-button:hover { color: var(--mz-text-primary); background: var(--mz-bg-hover); }
+.topbar-send { padding-right: 12px; padding-left: 12px; color: white; background: var(--mz-button-primary); }
+.global-alert { top: 55px; }
+[data-builder-layout="two-pane-sequence"] { min-height: 0; }
+.disco-builder { height: 100%; }
+.editor-pane { width: 55%; }
+.preview-pane { position: sticky; top: 0; width: 45%; height: calc(100vh - 48px); }
+.pane-scroll { padding: 10px 12px; }
+.builder-project-heading, .message-editor-card, .add-message-wide { width: 100%; max-width: none; }
+.builder-project-heading { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px; margin-bottom: 8px; }
+.builder-project-heading .eyebrow { margin: 0; }
+.message-editor-card { margin-bottom: 0; border-width: 0 0 1px; border-radius: 0; }
+.message-editor-header { min-height: 38px; padding: 7px 10px; }
+.message-editor-kicker { display: inline; margin-right: 6px; font-size: 9px; }
+.message-editor-header h2 { display: inline; font-size: 13px; }
+.message-editor-actions button { padding: 4px 7px; font-size: 11px; }
+.composer-trigger { padding: 9px 10px; font-size: 12px; }
+.composer-card-body { gap: 9px; padding: 0 10px 10px; }
+.repeat-row { gap: 7px; margin-top: 8px; padding: 8px; }
+.add-message-wide { margin-top: 8px; padding: 9px; border-style: solid; font-size: 12px; }
+.preview-heading { margin-bottom: 10px; }
+.sequence-preview { gap: 10px; }
+.sequence-message { padding: 8px 0; }
+.utility-backdrop { position: fixed; z-index: 20; inset: 48px 0 0; display: flex; justify-content: flex-end; background: rgb(0 0 0 / 42%); }
+.utility-drawer { width: min(620px, 100%); height: 100%; overflow: auto; border-left: 1px solid var(--mz-border); box-shadow: -12px 0 28px rgb(0 0 0 / 22%); }
+.drawer-heading { display: flex; position: sticky; z-index: 1; top: 0; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--mz-border); background: var(--mz-bg-setting-primary); font-size: 13px; }
+.utility-drawer .screen-panel { width: auto; max-height: none; margin: 0; padding: 14px; border: 0; border-radius: 0; }
+.utility-drawer .target-list { margin-top: 14px; }
+
+@media (max-width: 899px) {
+  .workspace-shell { height: auto; min-height: 100vh; overflow: visible; }
+  .channel-topbar { position: sticky; z-index: 10; top: 0; }
+  .topbar-project { max-width: 26vw; }
+  .builder-mobile-tabs { display: grid; grid-template-columns: 1fr 1fr; padding: 0 10px; }
+  .mobile-pane-tab { border: 0; border-bottom: 2px solid transparent; padding: 9px; color: var(--mz-text-muted); background: transparent; font-weight: 700; }
+  .mobile-pane-tab--active { border-color: var(--mz-border-focus); color: var(--mz-text-primary); }
+  .disco-builder { display: block; height: auto; overflow: visible; }
+  .editor-pane, .preview-pane { display: none; width: 100%; height: auto; min-height: auto; }
+  .disco-builder--editor .editor-pane, .disco-builder--preview .preview-pane { display: block; }
+  .pane-scroll { overflow: visible; padding: 8px; }
+  .utility-backdrop { inset: 48px 0 0; }
+}

@@ -45,6 +45,16 @@ describe('MezonHook project builder', () => {
     expect(screen.getByTestId('project-editor')).toHaveAttribute('data-builder-layout', 'two-pane-sequence');
   });
 
+  // Mutation caught: delivery stays a primary navigation screen instead of a compact topbar action and secondary drawer.
+  it('opens delivery from the compact Send action', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+
+    expect(screen.getByRole('dialog', { name: 'Delivery configuration' })).toBeInTheDocument();
+  });
+
   // Mutation caught: adding a project message does not add it to the ordered preview sequence.
   it('adds a message and renders both messages in sequence preview', async () => {
     const user = userEvent.setup();
