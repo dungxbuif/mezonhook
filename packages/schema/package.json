@@ -3,8 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "test": "vitest run"
+    "build": "tsc --project tsconfig.json",
+    "test": "npm run build && vitest run"
   },
   "devDependencies": {
     "typescript": "^5.7.3",
