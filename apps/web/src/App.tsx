@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   createAnnouncementDraft,
   createDraftFromTemplate,
   messageTemplates,
+  validateDraft,
   type MessageButtonStyle,
   type MessageDraft,
 } from '@mezonhook/schema';
+import { importDraftJson, readStoredDraft, saveDraft } from './draft-storage';
+import { sendWebhook } from './webhook';
 
 const MAX_FIELDS = 25;
 const MAX_BUTTONS = 5;
@@ -23,7 +26,18 @@ function actionClass(style: MessageButtonStyle): string {
 }
 
 function App() {
-  const [draft, setDraft] = useState<MessageDraft>(() => createAnnouncementDraft());
+  const [draft, setDraft] = useState<MessageDraft>(() => {
+    const restored = readStoredDraft();
+    return restored.ok && restored.draft ? restored.draft : createAnnouncementDraft();
+  });
+  const [importError, setImportError] = useState('');
+  const [webhookUrl, setWebhookUrl] = useState('');
+  const [sendStatus, setSendStatus] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
+  const [isSending, setIsSending] = useState(false);
+
+  useEffect(() => {
+    saveDraft(draft);
+  }, [draft]);
 
   const updateDraft = (update: (current: MessageDraft) => MessageDraft) => {
     setDraft((current) => update(current));
@@ -38,6 +52,51 @@ function App() {
 
   const selectTemplate = (name: string) => {
     setDraft(createDraftFromTemplate(name));
+  };
+
+  const importTemplate = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      const result = importDraftJson(await file.text());
+      if (!result.ok || !result.draft) {
+        setImportError(`Unable to import template: ${result.ok ? 'The draft is missing.' : result.error}`);
+        return;
+      }
+      setDraft(result.draft);
+      setImportError('');
+    } catch {
+      setImportError('Unable to import template: The selected file could not be read.');
+    }
+  };
+
+  const exportTemplate = () => {
+    const validation = validateDraft(draft);
+    if (!validation.valid) {
+      setImportError(`Unable to export template: ${validation.errors.join(' ')}`);
+      return;
+    }
+    const blob = new Blob([JSON.stringify(draft, null, 2)], { type: 'application/json' });
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = href;
+    link.download = 'mezonhook-template.json';
+    link.click();
+    URL.revokeObjectURL(href);
+  };
+
+  const submitWebhook = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSending(true);
+    setSendStatus(null);
+    try {
+      await sendWebhook(webhookUrl, draft);
+      setWebhookUrl('');
+      setSendStatus({ kind: 'success', message: 'Message sent to Mezon.' });
+    } catch (error) {
+      setSendStatus({ kind: 'error', message: error instanceof Error ? error.message : 'Could not send the message. Please try again.' });
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const addField = () => {
@@ -122,6 +181,21 @@ function App() {
               </button>
             ))}
           </div>
+          <div className="template-file-actions">
+            <label className="import-button" htmlFor="template-import">Import template</label>
+            <input
+              id="template-import"
+              className="visually-hidden"
+              type="file"
+              accept="application/json,.json"
+              onChange={(event) => {
+                void importTemplate(event.currentTarget.files?.[0]);
+                event.currentTarget.value = '';
+              }}
+            />
+            <button type="button" className="template-button" onClick={exportTemplate}>Export template</button>
+          </div>
+          {importError && <p className="form-alert" role="alert">{importError}</p>}
         </div>
 
         <div className="form-grid">
@@ -209,6 +283,24 @@ function App() {
               <button type="button" className="remove-button" onClick={() => removeButton(index)} aria-label={`Remove button ${index + 1}`}>Remove</button>
             </div>
           ))}
+        </section>
+
+        <section className="editor-section send-section" aria-labelledby="send-title">
+          <div className="section-heading">
+            <div>
+              <h2 id="send-title">Send to Mezon</h2>
+              <p>Deliver this draft directly to a Channel Webhook.</p>
+            </div>
+          </div>
+          <form className="send-form" onSubmit={submitWebhook}>
+            <label>
+              <span>Channel webhook URL</span>
+              <input type="password" value={webhookUrl} onChange={(event) => setWebhookUrl(event.target.value)} autoComplete="off" required />
+            </label>
+            <p className="session-note">This URL is session-only and is never saved or exported.</p>
+            <button className="add-button" type="submit" disabled={isSending}>{isSending ? 'Sending…' : 'Send message'}</button>
+          </form>
+          {sendStatus && <p className={sendStatus.kind === 'error' ? 'form-alert' : 'send-success'} role={sendStatus.kind === 'error' ? 'alert' : 'status'}>{sendStatus.message}</p>}
         </section>
       </section>
 
