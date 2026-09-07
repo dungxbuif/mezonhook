@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
@@ -21,12 +21,49 @@ afterEach(() => {
 });
 
 describe('MezonHook project builder', () => {
+  // Mutation caught: the builder falls back to a long ungrouped form instead of collapsible composer sections.
+  it('uses collapsible composer cards for the selected message', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(screen.getByRole('button', { name: 'Content' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Embeds' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Fields' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Components' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Advanced' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Card title')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Embeds' }));
+
+    expect(screen.getByLabelText('Card title')).toBeInTheDocument();
+  });
+
   // Mutation caught: adding a project message does not add it to the ordered preview sequence.
   it('adds a message and renders both messages in sequence preview', async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole('button', { name: 'Add message' }));
+    await user.click(screen.getByRole('button', { name: 'Add Message' }));
     expect(screen.getAllByTestId('message-preview')).toHaveLength(2);
+  });
+
+  // Mutation caught: sequential editor headers do not update the shared project delivery order after a native drag-and-drop.
+  it('reorders project messages by dragging a sequential editor header', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Add Message' }));
+    const editors = screen.getAllByTestId(/message-editor-/);
+    await user.click(within(editors[1]).getByRole('button', { name: 'Embeds' }));
+    await user.clear(within(editors[1]).getByLabelText('Card title'));
+    await user.type(within(editors[1]).getByLabelText('Card title'), 'Second message first');
+    const headers = screen.getAllByTestId(/message-editor-/).map((editor) => editor.querySelector('header')!);
+    const dataTransfer = { effectAllowed: 'move', dropEffect: 'move', setData: vi.fn(), getData: vi.fn(() => '1') };
+
+    fireEvent.dragStart(headers[1], { dataTransfer });
+    fireEvent.dragOver(headers[0], { dataTransfer });
+    fireEvent.drop(headers[0], { dataTransfer });
+
+    expect(screen.getAllByTestId(/message-editor-/)[0]).toHaveTextContent('Second message first');
+    expect(screen.getAllByTestId('message-preview')[0]).toHaveTextContent('Second message first');
   });
 
   // Mutation caught: channel target URLs become visible or move into persisted project state.

@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type FormEvent } from 'react';
+import { useEffect, useState, type CSSProperties, type DragEvent, type FormEvent, type ReactNode } from 'react';
 import {
   createAnnouncementDraft,
   createDraftFromTemplate,
@@ -20,6 +20,8 @@ const MAX_BUTTONS = 5;
 
 type Screen = 'builder' | 'config' | 'help';
 type Status = { kind: 'success' | 'error'; message: string } | null;
+type ComposerSection = 'content' | 'embeds' | 'fields' | 'components' | 'advanced';
+type BuilderTab = 'editor' | 'preview';
 
 const buttonStyles: Array<{ value: MessageButtonStyle; label: string }> = [
   { value: 1, label: 'Primary' }, { value: 2, label: 'Secondary' }, { value: 3, label: 'Success' },
@@ -71,73 +73,99 @@ function MessagePreview({ draft, index, selected }: { draft: MessageDraft; index
   );
 }
 
+function MessageEditorSection({
+  draft, index, canDuplicate, canRemove, dragged, onUpdateMessage, onUpdateCard, onAddField, onUpdateField, onRemoveField, onAddButton, onUpdateButton, onRemoveButton, onDuplicate, onRemove, onDragStart, onDragOver, onDrop, onDragEnd,
+}: {
+  draft: MessageDraft; index: number; canDuplicate: boolean; canRemove: boolean; dragged: boolean;
+  onUpdateMessage: (update: (current: MessageDraft) => MessageDraft) => void;
+  onUpdateCard: (property: keyof MessageDraft['card'], value: string) => void;
+  onAddField: () => void; onUpdateField: (fieldIndex: number, property: 'name' | 'value' | 'inline', value: string | boolean) => void; onRemoveField: (fieldIndex: number) => void;
+  onAddButton: () => void; onUpdateButton: (buttonIndex: number, property: 'id' | 'label' | 'style', value: string | MessageButtonStyle) => void; onRemoveButton: (buttonIndex: number) => void;
+  onDuplicate: () => void; onRemove: () => void;
+  onDragStart: (event: DragEvent<HTMLElement>) => void; onDragOver: (event: DragEvent<HTMLElement>) => void; onDrop: (event: DragEvent<HTMLElement>) => void; onDragEnd: () => void;
+}) {
+  const [openSections, setOpenSections] = useState<Record<ComposerSection, boolean>>({ content: true, embeds: false, fields: false, components: false, advanced: false });
+  const toggle = (section: ComposerSection) => setOpenSections((current) => ({ ...current, [section]: !current[section] }));
+  const section = (name: ComposerSection, title: string, content: ReactNode) => <section className="composer-card" key={name}><button type="button" className="composer-trigger" aria-expanded={openSections[name]} aria-controls={`message-${index}-${name}`} onClick={() => toggle(name)}><span>{title}</span><span aria-hidden="true">⌄</span></button>{openSections[name] && <div id={`message-${index}-${name}`} className="composer-card-body">{content}</div>}</section>;
+
+  return <article className={`message-editor-card ${dragged ? 'message-editor-card--dragging' : ''}`} data-testid={`message-editor-${index + 1}`}>
+    <header className="message-editor-header" draggable onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop} onDragEnd={onDragEnd}>
+      <div><p className="message-editor-kicker">Message {index + 1}</p><h2>{draft.card.title || 'Untitled message'}</h2></div>
+      <div className="message-editor-actions"><button type="button" className="template-button" onClick={onDuplicate} disabled={!canDuplicate} aria-label={`Duplicate message ${index + 1}`}>Duplicate</button><button type="button" className="remove-button" onClick={onRemove} disabled={!canRemove} aria-label={`Remove message ${index + 1}`}>Remove</button></div>
+    </header>
+    <div className="composer-accordion">
+      {section('content', 'Content', <><div className="template-picker" aria-label={`Message ${index + 1} templates`}><span className="section-label">Replace this message with a template</span><div className="template-buttons">{messageTemplates.map((template) => <button key={template.name} type="button" className="template-button" onClick={() => onUpdateMessage(() => createDraftFromTemplate(template.name))}>{template.name}</button>)}</div></div><label className="full-width"><span>Body</span><textarea value={draft.body} onChange={(event) => onUpdateMessage((current) => ({ ...current, body: event.target.value }))} rows={4} /></label></>)}
+      {section('embeds', 'Embeds', <><p className="accordion-note">This message supports one Mezon embed.</p><div className="form-grid"><label><span>Card title</span><input value={draft.card.title} onChange={(event) => onUpdateCard('title', event.target.value)} /></label><label><span>Color</span><input type="color" value={draft.card.color} onChange={(event) => onUpdateCard('color', event.target.value)} /></label><label className="full-width"><span>Description</span><textarea value={draft.card.description} onChange={(event) => onUpdateCard('description', event.target.value)} rows={4} /></label></div></>)}
+      {section('fields', 'Fields', <><div className="section-heading"><div><h2>Fields</h2><p>{draft.card.fields.length} / {MAX_FIELDS}</p></div><button type="button" className="add-button" onClick={onAddField} disabled={draft.card.fields.length >= MAX_FIELDS}>Add field</button></div>{draft.card.fields.map((field, fieldIndex) => <div className="repeat-row" key={`field-${fieldIndex}`}><label><span>Field name</span><input value={field.name} onChange={(event) => onUpdateField(fieldIndex, 'name', event.target.value)} /></label><label><span>Field value</span><input value={field.value} onChange={(event) => onUpdateField(fieldIndex, 'value', event.target.value)} /></label><label className="inline-toggle"><input type="checkbox" checked={field.inline} onChange={(event) => onUpdateField(fieldIndex, 'inline', event.target.checked)} /><span>Inline</span></label><button type="button" className="remove-button" onClick={() => onRemoveField(fieldIndex)} aria-label={`Remove field ${fieldIndex + 1}`}>Remove</button></div>)}</>)}
+      {section('components', 'Components', <><div className="section-heading"><div><h2>Actions</h2><p>{draft.buttons.length} / {MAX_BUTTONS}</p></div><button type="button" className="add-button" onClick={onAddButton} disabled={draft.buttons.length >= MAX_BUTTONS}>Add button</button></div>{draft.buttons.map((button, buttonIndex) => <div className="repeat-row button-row" key={`button-${buttonIndex}`}><label><span>Button label</span><input value={button.label} onChange={(event) => onUpdateButton(buttonIndex, 'label', event.target.value)} /></label><label><span>Button ID</span><input value={button.id} onChange={(event) => onUpdateButton(buttonIndex, 'id', event.target.value)} /></label><label><span>Button style</span><select value={button.style} onChange={(event) => onUpdateButton(buttonIndex, 'style', Number(event.target.value) as MessageButtonStyle)}>{buttonStyles.map((style) => <option key={style.value} value={style.value}>{style.label}</option>)}</select></label><button type="button" className="remove-button" onClick={() => onRemoveButton(buttonIndex)} aria-label={`Remove button ${buttonIndex + 1}`}>Remove</button></div>)}</>)}
+      {section('advanced', 'Advanced', <div className="form-grid"><label><span>Author</span><input value={draft.card.author} onChange={(event) => onUpdateCard('author', event.target.value)} /></label><label><span>Thumbnail URL</span><input type="url" value={draft.card.thumbnail} onChange={(event) => onUpdateCard('thumbnail', event.target.value)} placeholder="https://" /></label><label className="full-width"><span>Image URL</span><input type="url" value={draft.card.image} onChange={(event) => onUpdateCard('image', event.target.value)} placeholder="https://" /></label></div>)}
+    </div>
+  </article>;
+}
+
 function App() {
   const [project, setProject] = useState<WebhookProject>(() => {
     const saved = readStoredProject();
     return saved.ok ? saved.project : createWebhookProject();
   });
   const [activeScreen, setActiveScreen] = useState<Screen>('builder');
-  const [selectedMessageIndex, setSelectedMessageIndex] = useState(0);
+  const [builderTab, setBuilderTab] = useState<BuilderTab>('editor');
   const [targetUrls, setTargetUrls] = useState<Record<string, string>>({});
   const [selectedTargetIds, setSelectedTargetIds] = useState<string[]>(() => [createWebhookProject().targets[0].id]);
   const [projectError, setProjectError] = useState('');
   const [deliveryStatus, setDeliveryStatus] = useState<Status>(null);
   const [isSending, setIsSending] = useState(false);
+  const [draggedMessageIndex, setDraggedMessageIndex] = useState<number | null>(null);
 
   useEffect(() => { saveProject(project); }, [project]);
 
-  const selectedMessage = project.messages[selectedMessageIndex] ?? project.messages[0];
   const updateProject = (update: (current: WebhookProject) => WebhookProject) => {
     setProject((current) => normalizeProject(update(current)));
   };
-  const updateSelectedMessage = (update: (current: MessageDraft) => MessageDraft) => {
-    updateProject((current) => ({ ...current, messages: current.messages.map((message, index) => index === selectedMessageIndex ? update(message) : message) }));
+  const updateMessage = (messageIndex: number, update: (current: MessageDraft) => MessageDraft) => {
+    updateProject((current) => ({ ...current, messages: current.messages.map((message, index) => index === messageIndex ? update(message) : message) }));
   };
-  const updateCard = (property: keyof MessageDraft['card'], value: string) => updateSelectedMessage((current) => ({ ...current, card: { ...current.card, [property]: value } }));
+  const updateCard = (messageIndex: number, property: keyof MessageDraft['card'], value: string) => updateMessage(messageIndex, (current) => ({ ...current, card: { ...current.card, [property]: value } }));
 
   const addMessage = () => {
     if (project.messages.length >= MAX_MESSAGES) return;
     updateProject((current) => ({ ...current, messages: [...current.messages, createAnnouncementDraft()] }));
-    setSelectedMessageIndex(project.messages.length);
   };
-  const duplicateSelectedMessage = () => {
+  const duplicateMessage = (messageIndex: number) => {
     if (project.messages.length >= MAX_MESSAGES) return;
-    const insertionIndex = selectedMessageIndex + 1;
-    updateProject((current) => ({ ...current, messages: [...current.messages.slice(0, insertionIndex), current.messages[selectedMessageIndex], ...current.messages.slice(insertionIndex)] }));
-    setSelectedMessageIndex(insertionIndex);
+    const insertionIndex = messageIndex + 1;
+    updateProject((current) => ({ ...current, messages: [...current.messages.slice(0, insertionIndex), current.messages[messageIndex], ...current.messages.slice(insertionIndex)] }));
   };
-  const removeSelectedMessage = () => {
+  const removeMessage = (messageIndex: number) => {
     if (project.messages.length <= 1) return;
-    updateProject((current) => ({ ...current, messages: current.messages.filter((_, index) => index !== selectedMessageIndex) }));
-    setSelectedMessageIndex((index) => Math.max(0, Math.min(index, project.messages.length - 2)));
+    updateProject((current) => ({ ...current, messages: current.messages.filter((_, index) => index !== messageIndex) }));
   };
-  const moveSelectedMessage = (direction: -1 | 1) => {
-    const nextIndex = selectedMessageIndex + direction;
-    if (nextIndex < 0 || nextIndex >= project.messages.length) return;
+  const reorderMessage = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= project.messages.length || toIndex >= project.messages.length) return;
     updateProject((current) => {
       const messages = [...current.messages];
-      [messages[selectedMessageIndex], messages[nextIndex]] = [messages[nextIndex], messages[selectedMessageIndex]];
+      const [movingMessage] = messages.splice(fromIndex, 1);
+      messages.splice(toIndex, 0, movingMessage);
       return { ...current, messages };
     });
-    setSelectedMessageIndex(nextIndex);
   };
 
-  const addField = () => {
-    if (selectedMessage.card.fields.length >= MAX_FIELDS) return;
-    updateSelectedMessage((current) => ({ ...current, card: { ...current.card, fields: [...current.card.fields, { name: '', value: '', inline: false }] } }));
+  const addField = (messageIndex: number) => {
+    if (project.messages[messageIndex].card.fields.length >= MAX_FIELDS) return;
+    updateMessage(messageIndex, (current) => ({ ...current, card: { ...current.card, fields: [...current.card.fields, { name: '', value: '', inline: false }] } }));
   };
-  const updateField = (index: number, property: 'name' | 'value' | 'inline', value: string | boolean) => updateSelectedMessage((current) => ({
+  const updateField = (messageIndex: number, index: number, property: 'name' | 'value' | 'inline', value: string | boolean) => updateMessage(messageIndex, (current) => ({
     ...current, card: { ...current.card, fields: current.card.fields.map((field, fieldIndex) => fieldIndex === index ? { ...field, [property]: value } : field) },
   }));
-  const removeField = (index: number) => updateSelectedMessage((current) => ({ ...current, card: { ...current.card, fields: current.card.fields.filter((_, fieldIndex) => fieldIndex !== index) } }));
-  const addButton = () => {
-    if (selectedMessage.buttons.length >= MAX_BUTTONS) return;
-    updateSelectedMessage((current) => ({ ...current, buttons: [...current.buttons, { id: `button-${current.buttons.length + 1}`, label: 'New button', style: 2 }] }));
+  const removeField = (messageIndex: number, index: number) => updateMessage(messageIndex, (current) => ({ ...current, card: { ...current.card, fields: current.card.fields.filter((_, fieldIndex) => fieldIndex !== index) } }));
+  const addButton = (messageIndex: number) => {
+    if (project.messages[messageIndex].buttons.length >= MAX_BUTTONS) return;
+    updateMessage(messageIndex, (current) => ({ ...current, buttons: [...current.buttons, { id: `button-${current.buttons.length + 1}`, label: 'New button', style: 2 }] }));
   };
-  const updateButton = (index: number, property: 'id' | 'label' | 'style', value: string | MessageButtonStyle) => updateSelectedMessage((current) => ({
+  const updateButton = (messageIndex: number, index: number, property: 'id' | 'label' | 'style', value: string | MessageButtonStyle) => updateMessage(messageIndex, (current) => ({
     ...current, buttons: current.buttons.map((button, buttonIndex) => buttonIndex === index ? { ...button, [property]: value } : button),
   }));
-  const removeButton = (index: number) => updateSelectedMessage((current) => ({ ...current, buttons: current.buttons.filter((_, buttonIndex) => buttonIndex !== index) }));
+  const removeButton = (messageIndex: number, index: number) => updateMessage(messageIndex, (current) => ({ ...current, buttons: current.buttons.filter((_, buttonIndex) => buttonIndex !== index) }));
 
   const addTarget = () => {
     if (project.targets.length >= MAX_TARGETS) return;
@@ -162,7 +190,6 @@ function App() {
       const result = importProjectJson(await readFileText(file));
       if (!result.ok) { setProjectError(`Unable to import project: ${result.error}`); return; }
       setProject(result.project);
-      setSelectedMessageIndex(0);
       setSelectedTargetIds(result.project.targets.length ? [result.project.targets[0].id] : []);
       setTargetUrls({});
       setProjectError('');
@@ -197,8 +224,8 @@ function App() {
 
   return (
     <main className="workspace-shell">
-      <header className="product-header">
-        <div><p className="eyebrow">MezonHook</p><h1>Webhook project builder</h1></div>
+      <header className="channel-topbar">
+        <div><p className="eyebrow">MezonHook · channel composer</p><h1>Webhook project builder</h1></div>
         <nav className="product-nav" aria-label="Project screens">
           {(['builder', 'config', 'help'] as Screen[]).map((screen) => <button key={screen} type="button" className={activeScreen === screen ? 'nav-tab nav-tab--active' : 'nav-tab'} onClick={() => setActiveScreen(screen)}>{screen[0].toUpperCase() + screen.slice(1)}</button>)}
         </nav>
@@ -210,30 +237,7 @@ function App() {
       </header>
       {projectError && <p className="form-alert global-alert" role="alert">{projectError}</p>}
 
-      {activeScreen === 'builder' && <div className="builder-grid">
-        <aside className="message-rail" aria-label="Project messages">
-          <div className="rail-heading"><div><p className="eyebrow">Sequence</p><h2>{project.messages.length} / {MAX_MESSAGES} messages</h2></div><button type="button" className="add-button" onClick={addMessage} disabled={project.messages.length >= MAX_MESSAGES}>Add message</button></div>
-          <div className="rail-list">{project.messages.map((message, index) => <button type="button" key={`${index}-${message.card.title}`} className={selectedMessageIndex === index ? 'rail-message rail-message--selected' : 'rail-message'} onClick={() => setSelectedMessageIndex(index)}><span>Message {index + 1}</span><strong>{message.card.title || 'Untitled message'}</strong></button>)}</div>
-          <div className="message-lifecycle"><button type="button" className="template-button" onClick={duplicateSelectedMessage} disabled={project.messages.length >= MAX_MESSAGES}>Duplicate</button><button type="button" className="template-button" onClick={() => moveSelectedMessage(-1)} disabled={selectedMessageIndex === 0}>Move up</button><button type="button" className="template-button" onClick={() => moveSelectedMessage(1)} disabled={selectedMessageIndex === project.messages.length - 1}>Move down</button><button type="button" className="remove-button" onClick={removeSelectedMessage} disabled={project.messages.length <= 1}>Remove</button></div>
-        </aside>
-        <section className="editor-panel" aria-labelledby="editor-title">
-          <p className="eyebrow">Builder</p><h2 id="editor-title">Message {selectedMessageIndex + 1}</h2>
-          <label className="project-name"><span>Project name</span><input value={project.name} onChange={(event) => updateProject((current) => ({ ...current, name: event.target.value }))} /></label>
-          <div className="template-picker" aria-label="Message templates"><span className="section-label">Replace selected message with a template</span><div className="template-buttons">{messageTemplates.map((template) => <button key={template.name} type="button" className="template-button" onClick={() => updateSelectedMessage(() => createDraftFromTemplate(template.name))}>{template.name}</button>)}</div></div>
-          <div className="form-grid">
-            <label className="full-width"><span>Body</span><textarea value={selectedMessage.body} onChange={(event) => updateSelectedMessage((current) => ({ ...current, body: event.target.value }))} rows={3} /></label>
-            <label><span>Card title</span><input value={selectedMessage.card.title} onChange={(event) => updateCard('title', event.target.value)} /></label>
-            <label><span>Color</span><input type="color" value={selectedMessage.card.color} onChange={(event) => updateCard('color', event.target.value)} /></label>
-            <label className="full-width"><span>Description</span><textarea value={selectedMessage.card.description} onChange={(event) => updateCard('description', event.target.value)} rows={4} /></label>
-            <label><span>Author</span><input value={selectedMessage.card.author} onChange={(event) => updateCard('author', event.target.value)} /></label>
-            <label><span>Thumbnail URL</span><input type="url" value={selectedMessage.card.thumbnail} onChange={(event) => updateCard('thumbnail', event.target.value)} placeholder="https://" /></label>
-            <label className="full-width"><span>Image URL</span><input type="url" value={selectedMessage.card.image} onChange={(event) => updateCard('image', event.target.value)} placeholder="https://" /></label>
-          </div>
-          <section className="editor-section" aria-labelledby="fields-title"><div className="section-heading"><div><h2 id="fields-title">Fields</h2><p>{selectedMessage.card.fields.length} / {MAX_FIELDS}</p></div><button type="button" className="add-button" onClick={addField} disabled={selectedMessage.card.fields.length >= MAX_FIELDS}>Add field</button></div>{selectedMessage.card.fields.map((field, index) => <div className="repeat-row" key={`field-${index}`}><label><span>Field name</span><input value={field.name} onChange={(event) => updateField(index, 'name', event.target.value)} /></label><label><span>Field value</span><input value={field.value} onChange={(event) => updateField(index, 'value', event.target.value)} /></label><label className="inline-toggle"><input type="checkbox" checked={field.inline} onChange={(event) => updateField(index, 'inline', event.target.checked)} /><span>Inline</span></label><button type="button" className="remove-button" onClick={() => removeField(index)} aria-label={`Remove field ${index + 1}`}>Remove</button></div>)}</section>
-          <section className="editor-section" aria-labelledby="buttons-title"><div className="section-heading"><div><h2 id="buttons-title">Actions</h2><p>{selectedMessage.buttons.length} / {MAX_BUTTONS}</p></div><button type="button" className="add-button" onClick={addButton} disabled={selectedMessage.buttons.length >= MAX_BUTTONS}>Add button</button></div>{selectedMessage.buttons.map((button, index) => <div className="repeat-row button-row" key={`button-${index}`}><label><span>Button label</span><input value={button.label} onChange={(event) => updateButton(index, 'label', event.target.value)} /></label><label><span>Button ID</span><input value={button.id} onChange={(event) => updateButton(index, 'id', event.target.value)} /></label><label><span>Button style</span><select value={button.style} onChange={(event) => updateButton(index, 'style', Number(event.target.value) as MessageButtonStyle)}>{buttonStyles.map((style) => <option key={style.value} value={style.value}>{style.label}</option>)}</select></label><button type="button" className="remove-button" onClick={() => removeButton(index)} aria-label={`Remove button ${index + 1}`}>Remove</button></div>)}</section>
-        </section>
-        <section className="preview-panel" aria-labelledby="preview-title"><div className="preview-heading"><p className="eyebrow">Sequence preview</p><h2 id="preview-title">Messages send in this order</h2></div><div className="sequence-preview">{project.messages.map((message, index) => <MessagePreview key={`${index}-${message.card.title}`} draft={message} index={index} selected={selectedMessageIndex === index} />)}</div></section>
-      </div>}
+      {activeScreen === 'builder' && <><div className="builder-mobile-tabs" role="tablist" aria-label="Builder panes"><button type="button" role="tab" aria-selected={builderTab === 'editor'} className={builderTab === 'editor' ? 'mobile-pane-tab mobile-pane-tab--active' : 'mobile-pane-tab'} onClick={() => setBuilderTab('editor')}>Editor</button><button type="button" role="tab" aria-selected={builderTab === 'preview'} className={builderTab === 'preview' ? 'mobile-pane-tab mobile-pane-tab--active' : 'mobile-pane-tab'} onClick={() => setBuilderTab('preview')}>Preview</button></div><div className={`disco-builder disco-builder--${builderTab}`}><section className="editor-pane" aria-label="Message editors"><div className="pane-scroll"><div className="builder-project-heading"><p className="eyebrow">Builder</p><label className="project-name"><span>Project name</span><input value={project.name} onChange={(event) => updateProject((current) => ({ ...current, name: event.target.value }))} /></label></div>{project.messages.map((message, index) => <MessageEditorSection key={`editor-message-${index}`} draft={message} index={index} dragged={draggedMessageIndex === index} canDuplicate={project.messages.length < MAX_MESSAGES} canRemove={project.messages.length > 1} onUpdateMessage={(update) => updateMessage(index, update)} onUpdateCard={(property, value) => updateCard(index, property, value)} onAddField={() => addField(index)} onUpdateField={(fieldIndex, property, value) => updateField(index, fieldIndex, property, value)} onRemoveField={(fieldIndex) => removeField(index, fieldIndex)} onAddButton={() => addButton(index)} onUpdateButton={(buttonIndex, property, value) => updateButton(index, buttonIndex, property, value)} onRemoveButton={(buttonIndex) => removeButton(index, buttonIndex)} onDuplicate={() => duplicateMessage(index)} onRemove={() => removeMessage(index)} onDragStart={(event) => { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', String(index)); setDraggedMessageIndex(index); }} onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; }} onDrop={(event) => { event.preventDefault(); const value = event.dataTransfer.getData('text/plain'); const sourceIndex = value === '' ? draggedMessageIndex : Number(value); if (sourceIndex !== null && Number.isInteger(sourceIndex)) reorderMessage(sourceIndex, index); setDraggedMessageIndex(null); }} onDragEnd={() => setDraggedMessageIndex(null)} />)}<button type="button" className="add-message-wide" onClick={addMessage} disabled={project.messages.length >= MAX_MESSAGES}>Add Message</button></div></section><section className="preview-pane" aria-labelledby="preview-title"><div className="pane-scroll"><div className="preview-heading"><p className="eyebrow">Sequence preview</p><h2 id="preview-title">Messages send in this order</h2></div><div className="sequence-preview">{project.messages.map((message, index) => <MessagePreview key={`preview-message-${index}`} draft={message} index={index} selected={false} />)}</div></div></section></div></>}
 
       {activeScreen === 'config' && <section className="screen-panel config-panel" aria-labelledby="config-title"><p className="eyebrow">Configuration</p><h2 id="config-title">Delivery targets</h2><p className="editor-intro">Target URLs are session-only: they are password-masked, never saved in this project, and cleared after a successful batch.</p><form onSubmit={sendProject} className="target-list">{project.targets.map((target) => <div className="target-row" key={target.id}><label className="target-select"><input type="checkbox" checked={selectedTargetIds.includes(target.id)} onChange={(event) => toggleTarget(target.id, event.target.checked)} /><span>Send to this target</span></label><label><span>Target name</span><input value={target.name} onChange={(event) => updateTargetName(target.id, event.target.value)} /></label><label><span>Webhook URL for {target.name}</span><input type="password" autoComplete="off" value={targetUrls[target.id] ?? ''} onChange={(event) => updateTargetUrl(target.id, event.target.value)} placeholder="https://webhook.mezon.ai/webhooks/..." /></label><button type="button" className="remove-button" onClick={() => removeTarget(target.id)} disabled={project.targets.length <= 1}>Remove target</button></div>)}<div className="target-actions"><button type="button" className="template-button" onClick={addTarget} disabled={project.targets.length >= MAX_TARGETS}>Add target</button><button type="submit" className="add-button" disabled={isSending}>{isSending ? 'Sending…' : 'Send project'}</button></div></form>{deliveryStatus && <p className={deliveryStatus.kind === 'error' ? 'form-alert' : 'send-success'} role={deliveryStatus.kind === 'error' ? 'alert' : 'status'}>{deliveryStatus.message}</p>}</section>}
 
