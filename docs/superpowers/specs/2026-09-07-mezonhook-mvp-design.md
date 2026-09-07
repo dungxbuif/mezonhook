@@ -16,7 +16,7 @@ The editor owns a `MessageDraft` value. Form controls dispatch immutable updates
 
 ## Mezon contract
 
-The draft maps to Mezon interactive content: `t` for body text, an `embed` array containing a rich card, and `components` containing an action row of buttons. The model reflects documented Mezon `InteractiveBuilder` and `ButtonBuilder` fields. It does not claim to be a verified public incoming-webhook payload until Mezon publishes/identifies that endpoint.
+The draft maps to Mezon interactive content: `t` for body text, an `embed` array containing a rich card, and `components` containing an action row of buttons. Each exported button follows the current Mezon SDK contract: `{ id, type: 1, component: { label, style } }`. The model reflects documented Mezon `InteractiveBuilder` and `ButtonBuilder` fields. It does not claim to be a verified public incoming-webhook payload until Mezon publishes/identifies that endpoint.
 
 ## Error handling and security
 

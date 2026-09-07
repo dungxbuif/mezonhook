@@ -35,7 +35,7 @@ import { createAnnouncementDraft, toMezonContent, validateDraft } from './index'
 it('exports an announcement as Mezon rich content', () => {
   const content = toMezonContent(createAnnouncementDraft());
   expect(content.embed[0].title).toBe('Announcement');
-  expect(content.components[0].components[0].label).toBe('Learn more');
+  expect(content.components[0].components[0].component.label).toBe('Learn more');
 });
 
 it('rejects a card with more than 25 fields', () => {
