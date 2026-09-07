@@ -1,8 +1,21 @@
-import { createAnnouncementDraft, toMezonContent } from '@mezonhook/schema';
+import { createAnnouncementDraft, createDraftFromTemplate, toMezonContent } from '@mezonhook/schema';
 import { describe, expect, it, vi } from 'vitest';
-import { sendWebhook, validateWebhookUrl } from './webhook';
+import { sendWebhook, sendWebhookBatch, validateWebhookUrl } from './webhook';
 
 describe('Mezon Channel Webhooks', () => {
+  it('sends each message in order to each target and returns the delivery count', async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    const count = await sendWebhookBatch(
+      ['https://webhook.mezon.ai/webhooks/a/token', 'https://webhook.mezon.ai/webhooks/b/token'],
+      [createAnnouncementDraft(), createDraftFromTemplate('Release note')],
+      fetcher,
+    );
+    expect(count).toBe(4);
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
+      'https://webhook.mezon.ai/webhooks/a/token', 'https://webhook.mezon.ai/webhooks/b/token',
+      'https://webhook.mezon.ai/webhooks/a/token', 'https://webhook.mezon.ai/webhooks/b/token',
+    ]);
+  });
   // Mutation caught: delivery no longer uses the documented Mezon envelope.
   it('sends the documented Mezon Channel Webhook envelope', async () => {
     const draft = createAnnouncementDraft();

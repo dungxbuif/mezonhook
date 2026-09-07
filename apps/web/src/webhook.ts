@@ -38,3 +38,24 @@ export async function sendWebhook(url: string, draft: MessageDraft, fetcher: typ
 
   if (!response.ok) throw new Error('Mezon could not accept the message. Please check the channel webhook and try again.');
 }
+
+export async function sendWebhookBatch(
+  urls: string[],
+  drafts: MessageDraft[],
+  fetcher: typeof fetch = fetch,
+): Promise<number> {
+  if (urls.length === 0) throw new Error('Select at least one Mezon webhook target.');
+  if (drafts.length === 0 || drafts.some((draft) => !validateDraft(draft).valid)) {
+    throw new Error('Every message must be valid before sending.');
+  }
+  if (urls.some((url) => !validateWebhookUrl(url))) throw new Error('Enter valid Mezon Channel Webhook URLs.');
+
+  let deliveries = 0;
+  for (const draft of drafts) {
+    for (const url of urls) {
+      await sendWebhook(url, draft, fetcher);
+      deliveries += 1;
+    }
+  }
+  return deliveries;
+}
