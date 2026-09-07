@@ -1,0 +1,10 @@
+{
+  "name": "mezonhook",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "npm test --workspaces"
+  }
+}
