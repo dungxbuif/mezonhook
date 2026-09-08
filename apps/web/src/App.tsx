@@ -1,6 +1,6 @@
 import { useEffect, useState, type DragEvent, type FormEvent } from 'react';
 import { createWebhookProject, normalizeProject, validateProject, type MessageDraft, type WebhookProject } from '@mezonhook/schema';
-import { DeliveryConfig } from './components/DeliveryConfig';
+import { DeliveryConfig, type AppearanceTheme } from './components/DeliveryConfig';
 import { HelpPanel } from './components/HelpPanel';
 import { ProjectEditor } from './components/ProjectEditor';
 import { importProjectJson, readStoredProject, saveProject } from './project-storage';
@@ -8,6 +8,8 @@ import { sendWebhookBatch } from './webhook';
 
 const MAX_MESSAGES = 20;
 const MAX_TARGETS = 10;
+const APPEARANCE_STORAGE_KEY = 'mezonhook:appearance';
+const appearanceThemes: AppearanceTheme[] = ['dark', 'light', 'abyss', 'purple-haze', 'sunrise', 'sunset'];
 type BuilderTab = 'editor' | 'preview';
 type DeliveryStatus = { kind: 'success' | 'error'; message: string } | null;
 
@@ -24,9 +26,15 @@ function readFileText(file: File): Promise<string> {
   });
 }
 
+function readAppearance(): AppearanceTheme {
+  const saved = localStorage.getItem(APPEARANCE_STORAGE_KEY);
+  return appearanceThemes.includes(saved as AppearanceTheme) ? saved as AppearanceTheme : 'dark';
+}
+
 export default function App() {
   const [project, setProject] = useState<WebhookProject>(() => { const saved = readStoredProject(); return saved.ok ? saved.project : createWebhookProject(); });
   const [builderTab, setBuilderTab] = useState<BuilderTab>('editor');
+  const [appearance, setAppearance] = useState<AppearanceTheme>(readAppearance);
   const [targetUrls, setTargetUrls] = useState<Record<string, string>>({});
   const [selectedTargetIds, setSelectedTargetIds] = useState<string[]>(() => [createWebhookProject().targets[0].id]);
   const [projectError, setProjectError] = useState('');
@@ -35,6 +43,7 @@ export default function App() {
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
 
   useEffect(() => { saveProject(project); }, [project]);
+  useEffect(() => { document.documentElement.dataset.theme = appearance; localStorage.setItem(APPEARANCE_STORAGE_KEY, appearance); }, [appearance]);
 
   const updateProject = (update: (current: WebhookProject) => WebhookProject) => setProject((current) => normalizeProject(update(current)));
   const updateMessage = (index: number, update: (current: MessageDraft) => MessageDraft) => updateProject((current) => ({ ...current, messages: current.messages.map((message, messageIndex) => messageIndex === index ? update(message) : message) }));
@@ -104,6 +113,6 @@ export default function App() {
       <div className="topbar-actions"><label className="topbar-button" htmlFor="project-import"><span aria-hidden="true">Import</span><span className="visually-hidden"> project</span></label><input id="project-import" className="visually-hidden" type="file" accept="application/json,.json" onChange={(event) => { void importProject(event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} /><button type="button" className="topbar-button" aria-label="Export project" onClick={exportProject}>Export</button><button type="submit" form="delivery-form" className="topbar-send">Send</button></div>
     </header>
     {projectError && <p className="form-alert global-alert" role="alert">{projectError}</p>}
-    <ProjectEditor projectName={project.name} messages={project.messages} activeTab={builderTab} draggingIndex={draggingIndex} footer={<><DeliveryConfig targets={project.targets} selectedTargetIds={selectedTargetIds} targetUrls={targetUrls} sending={sending} status={deliveryStatus} onSubmit={sendProject} onToggleTarget={(id, checked) => setSelectedTargetIds((current) => checked ? [...new Set([...current, id])] : current.filter((targetId) => targetId !== id))} onTargetNameChange={(id, name) => updateProject((current) => ({ ...current, targets: current.targets.map((target) => target.id === id ? { ...target, name } : target) }))} onTargetUrlChange={(id, url) => setTargetUrls((current) => ({ ...current, [id]: url }))} onAddTarget={addTarget} onRemoveTarget={removeTarget} /><HelpPanel /></>} onProjectNameChange={(name) => updateProject((current) => ({ ...current, name }))} onTabChange={setBuilderTab} onMessageChange={updateMessage} onAddMessage={addMessage} onDuplicateMessage={duplicateMessage} onRemoveMessage={removeMessage} onDragStart={startDrag} onDragOver={dragOver} onDrop={drop} onDragEnd={() => setDraggingIndex(null)} />
+    <ProjectEditor projectName={project.name} messages={project.messages} activeTab={builderTab} draggingIndex={draggingIndex} footer={<><DeliveryConfig targets={project.targets} selectedTargetIds={selectedTargetIds} targetUrls={targetUrls} sending={sending} appearance={appearance} onAppearanceChange={setAppearance} status={deliveryStatus} onSubmit={sendProject} onToggleTarget={(id, checked) => setSelectedTargetIds((current) => checked ? [...new Set([...current, id])] : current.filter((targetId) => targetId !== id))} onTargetNameChange={(id, name) => updateProject((current) => ({ ...current, targets: current.targets.map((target) => target.id === id ? { ...target, name } : target) }))} onTargetUrlChange={(id, url) => setTargetUrls((current) => ({ ...current, [id]: url }))} onAddTarget={addTarget} onRemoveTarget={removeTarget} /><HelpPanel /></>} onProjectNameChange={(name) => updateProject((current) => ({ ...current, name }))} onTabChange={setBuilderTab} onMessageChange={updateMessage} onAddMessage={addMessage} onDuplicateMessage={duplicateMessage} onRemoveMessage={removeMessage} onDragStart={startDrag} onDragOver={dragOver} onDrop={drop} onDragEnd={() => setDraggingIndex(null)} />
   </main>;
 }

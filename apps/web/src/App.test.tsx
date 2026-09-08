@@ -16,6 +16,7 @@ function readBlobText(blob: Blob): Promise<string> {
 afterEach(() => {
   cleanup();
   localStorage.clear();
+  document.documentElement.removeAttribute('data-theme');
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -83,6 +84,21 @@ describe('MezonHook project builder', () => {
     expect(screen.getByText('Help and webhook guidance')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Config' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Help' })).not.toBeInTheDocument();
+  });
+
+  // Mutation caught: appearance selection stops using a persisted, non-sensitive root theme preference.
+  it('defaults to Dark and persists an inline appearance preference', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const appearance = screen.getByLabelText('Appearance theme');
+    expect(appearance).toHaveValue('dark');
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
+
+    await user.selectOptions(appearance, 'purple-haze');
+
+    expect(document.documentElement).toHaveAttribute('data-theme', 'purple-haze');
+    expect(localStorage.getItem('mezonhook:appearance')).toBe('purple-haze');
   });
 
   // Mutation caught: adding a project message does not add it to the ordered preview sequence.

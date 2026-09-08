@@ -11,6 +11,7 @@
   --mz-text-primary: #f1f2f5;
   --mz-text-muted: #b3b6c2;
   --mz-text-link: #78abff;
+  --mz-text-on-accent: #ffffff;
   --mz-border: rgb(255 255 255 / 12%);
   --mz-border-focus: #78aaff;
   --mz-button-primary: #4a72d7;
@@ -20,6 +21,26 @@
   --mz-button-link: #3c78bd;
   --mz-danger: #ed7d87;
   --mz-success: #66c58a;
+}
+
+:root[data-theme="light"] {
+  --mz-bg-primary: #f5f6fa; --mz-bg-direct-message: #ffffff; --mz-bg-setting-nav: #ebedf3; --mz-bg-setting-primary: #ffffff; --mz-bg-input: #f0f2f7; --mz-bg-surface: #e7eaf1; --mz-bg-hover: rgb(23 31 48 / 7%); --mz-bg-selected: rgb(23 31 48 / 11%); --mz-text-primary: #202534; --mz-text-muted: #687086; --mz-text-link: #3568be; --mz-border: rgb(28 38 58 / 16%); --mz-border-focus: #4679d3; --mz-button-primary: #436fd0; --mz-button-secondary: #72798a; --mz-button-success: #33875a; --mz-button-danger: #b84c59; --mz-button-link: #3e70bd; --mz-danger: #bd4050; --mz-success: #277d4e;
+}
+
+:root[data-theme="abyss"] {
+  --mz-bg-primary: #102834; --mz-bg-direct-message: #173540; --mz-bg-setting-nav: #0d222d; --mz-bg-setting-primary: #1a3c48; --mz-bg-input: #0d222c; --mz-bg-surface: #214755; --mz-bg-hover: rgb(160 231 239 / 10%); --mz-bg-selected: rgb(160 231 239 / 15%); --mz-text-primary: #e2f4f4; --mz-text-muted: #a2c8cc; --mz-text-link: #70d7dd; --mz-border: rgb(160 231 239 / 18%); --mz-border-focus: #66d2dd; --mz-button-primary: #248b9c; --mz-button-secondary: #3f6671; --mz-button-success: #318b71; --mz-button-danger: #b35d68; --mz-button-link: #2a8191; --mz-danger: #ef94a0; --mz-success: #73d5b4;
+}
+
+:root[data-theme="purple-haze"] {
+  --mz-bg-primary: #29233b; --mz-bg-direct-message: #352c4a; --mz-bg-setting-nav: #231d34; --mz-bg-setting-primary: #3d3355; --mz-bg-input: #211b31; --mz-bg-surface: #4a3c63; --mz-bg-hover: rgb(234 211 255 / 9%); --mz-bg-selected: rgb(234 211 255 / 14%); --mz-text-primary: #f5efff; --mz-text-muted: #c6b5dc; --mz-text-link: #c6a2ff; --mz-border: rgb(234 211 255 / 16%); --mz-border-focus: #b58bff; --mz-button-primary: #8059d5; --mz-button-secondary: #665678; --mz-button-success: #4e9a77; --mz-button-danger: #bd637f; --mz-button-link: #7453bd; --mz-danger: #f19ab0; --mz-success: #81d0a7;
+}
+
+:root[data-theme="sunrise"] {
+  --mz-bg-primary: #3a2a30; --mz-bg-direct-message: #49353a; --mz-bg-setting-nav: #302229; --mz-bg-setting-primary: #533d42; --mz-bg-input: #2b2027; --mz-bg-surface: #62464a; --mz-bg-hover: rgb(255 229 185 / 10%); --mz-bg-selected: rgb(255 229 185 / 15%); --mz-text-primary: #fff4e6; --mz-text-muted: #e0c0ac; --mz-text-link: #ffbc72; --mz-border: rgb(255 229 185 / 17%); --mz-border-focus: #f6a956; --mz-button-primary: #d8794a; --mz-button-secondary: #795d62; --mz-button-success: #57906f; --mz-button-danger: #c66570; --mz-button-link: #c66e45; --mz-danger: #f49aa0; --mz-success: #92d0a6;
+}
+
+:root[data-theme="sunset"] {
+  --mz-bg-primary: #302438; --mz-bg-direct-message: #402d47; --mz-bg-setting-nav: #281e30; --mz-bg-setting-primary: #493550; --mz-bg-input: #241b2b; --mz-bg-surface: #573c5c; --mz-bg-hover: rgb(255 213 202 / 9%); --mz-bg-selected: rgb(255 213 202 / 14%); --mz-text-primary: #fff0ed; --mz-text-muted: #dbb8c4; --mz-text-link: #ff9b8b; --mz-border: rgb(255 213 202 / 16%); --mz-border-focus: #e9828d; --mz-button-primary: #c45d83; --mz-button-secondary: #725466; --mz-button-success: #5d9678; --mz-button-danger: #c45c72; --mz-button-link: #b65778; --mz-danger: #f09ba8; --mz-success: #8ed0aa;
 }
 
 .bg-theme-primary { background: var(--mz-bg-primary); }
