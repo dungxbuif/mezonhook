@@ -129,13 +129,14 @@ input:focus, textarea:focus, select:focus { border-color: var(--mz-border-focus)
 
 /* Dense composer shell: the editor and Mezon preview are permanent desktop peers. */
 .workspace-shell { grid-template-rows: 48px minmax(0, 1fr); }
-.channel-topbar { display: flex; min-height: 48px; justify-content: space-between; gap: 10px; padding: 0 10px; }
-.topbar-brand, .topbar-actions { display: flex; min-width: 0; align-items: center; gap: 6px; }
+.channel-topbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; height: 48px; min-height: 48px; align-items: center; gap: 10px; padding: 0 10px; }
+.topbar-brand, .topbar-actions { display: flex; min-width: 0; height: 48px; align-items: center; gap: 6px; }
+.topbar-actions { justify-content: flex-end; flex-wrap: nowrap; }
 .topbar-logo { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 7px; color: white; background: var(--mz-button-primary); font-size: 13px; font-weight: 800; }
-.topbar-project { overflow: hidden; max-width: min(36vw, 420px); color: var(--mz-text-primary); font-size: 13px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-.topbar-button, .topbar-send { border: 0; border-radius: 4px; padding: 6px 8px; color: var(--mz-text-muted); background: transparent; font-size: 12px; font-weight: 650; cursor: pointer; }
+.topbar-project { overflow: hidden; max-width: min(36vw, 420px); color: var(--mz-text-primary); font-size: 13px; font-weight: 700; line-height: 20px; text-overflow: ellipsis; white-space: nowrap; }
+.topbar-button, .topbar-send { display: inline-flex; min-height: 32px; align-items: center; justify-content: center; border: 0; border-radius: 4px; padding: 0 10px; color: var(--mz-text-muted); background: transparent; font-size: 12px; font-weight: 650; line-height: 20px; cursor: pointer; }
 .topbar-button:hover { color: var(--mz-text-primary); background: var(--mz-bg-hover); }
-.topbar-send { padding-right: 12px; padding-left: 12px; color: white; background: var(--mz-button-primary); }
+.topbar-send { color: white; background: var(--mz-button-primary); }
 .global-alert { top: 55px; }
 [data-builder-layout="two-pane-sequence"] { min-height: 0; }
 .disco-builder { height: 100%; }
@@ -192,4 +193,11 @@ input:focus, textarea:focus, select:focus { border-color: var(--mz-border-focus)
   .pane-scroll { overflow: visible; padding: 8px; }
   .utility-backdrop { inset: 48px 0 0; }
   .option-row, .option-row--radio { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 719px) {
+  .workspace-shell { grid-template-rows: auto minmax(0, 1fr); }
+  .channel-topbar { height: auto; min-height: 48px; grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 8px 10px; }
+  .topbar-brand { height: 32px; }
+  .topbar-actions { height: auto; justify-content: flex-start; flex-wrap: wrap; }
 }
