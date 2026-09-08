@@ -8,7 +8,6 @@ import { sendWebhookBatch } from './webhook';
 
 const MAX_MESSAGES = 20;
 const MAX_TARGETS = 10;
-type Screen = 'builder' | 'config' | 'help';
 type BuilderTab = 'editor' | 'preview';
 type DeliveryStatus = { kind: 'success' | 'error'; message: string } | null;
 
@@ -27,7 +26,6 @@ function readFileText(file: File): Promise<string> {
 
 export default function App() {
   const [project, setProject] = useState<WebhookProject>(() => { const saved = readStoredProject(); return saved.ok ? saved.project : createWebhookProject(); });
-  const [screen, setScreen] = useState<Screen>('builder');
   const [builderTab, setBuilderTab] = useState<BuilderTab>('editor');
   const [targetUrls, setTargetUrls] = useState<Record<string, string>>({});
   const [selectedTargetIds, setSelectedTargetIds] = useState<string[]>(() => [createWebhookProject().targets[0].id]);
@@ -103,10 +101,9 @@ export default function App() {
   return <main className="workspace-shell bg-theme-primary color-theme-primary">
     <header className="channel-topbar bg-theme-direct-message border-b-theme-primary">
       <div className="topbar-brand"><span className="topbar-logo" aria-hidden="true">M</span><span className="topbar-project" title={project.name}>{project.name}</span></div>
-      <div className="topbar-actions"><label className="topbar-button" htmlFor="project-import"><span aria-hidden="true">Import</span><span className="visually-hidden"> project</span></label><input id="project-import" className="visually-hidden" type="file" accept="application/json,.json" onChange={(event) => { void importProject(event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} /><button type="button" className="topbar-button" aria-label="Export project" onClick={exportProject}>Export</button><button type="button" className="topbar-button" onClick={() => setScreen('config')}>Config</button><button type="button" className="topbar-button" onClick={() => setScreen('help')}>Help</button><button type="button" className="topbar-send" onClick={() => setScreen('config')}>Send</button></div>
+      <div className="topbar-actions"><label className="topbar-button" htmlFor="project-import"><span aria-hidden="true">Import</span><span className="visually-hidden"> project</span></label><input id="project-import" className="visually-hidden" type="file" accept="application/json,.json" onChange={(event) => { void importProject(event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} /><button type="button" className="topbar-button" aria-label="Export project" onClick={exportProject}>Export</button><button type="submit" form="delivery-form" className="topbar-send">Send</button></div>
     </header>
     {projectError && <p className="form-alert global-alert" role="alert">{projectError}</p>}
-    <ProjectEditor projectName={project.name} messages={project.messages} activeTab={builderTab} draggingIndex={draggingIndex} onProjectNameChange={(name) => updateProject((current) => ({ ...current, name }))} onTabChange={setBuilderTab} onMessageChange={updateMessage} onAddMessage={addMessage} onDuplicateMessage={duplicateMessage} onRemoveMessage={removeMessage} onDragStart={startDrag} onDragOver={dragOver} onDrop={drop} onDragEnd={() => setDraggingIndex(null)} />
-    {screen !== 'builder' && <div className="utility-backdrop" onMouseDown={() => setScreen('builder')}><aside className="utility-drawer bg-theme-setting-primary" role="dialog" aria-modal="true" aria-label={screen === 'config' ? 'Delivery configuration' : 'Help'} onMouseDown={(event) => event.stopPropagation()}><div className="drawer-heading"><strong>{screen === 'config' ? 'Delivery configuration' : 'Help'}</strong><button type="button" className="topbar-button" onClick={() => setScreen('builder')}>Close</button></div>{screen === 'config' ? <DeliveryConfig targets={project.targets} selectedTargetIds={selectedTargetIds} targetUrls={targetUrls} sending={sending} status={deliveryStatus} onSubmit={sendProject} onToggleTarget={(id, checked) => setSelectedTargetIds((current) => checked ? [...new Set([...current, id])] : current.filter((targetId) => targetId !== id))} onTargetNameChange={(id, name) => updateProject((current) => ({ ...current, targets: current.targets.map((target) => target.id === id ? { ...target, name } : target) }))} onTargetUrlChange={(id, url) => setTargetUrls((current) => ({ ...current, [id]: url }))} onAddTarget={addTarget} onRemoveTarget={removeTarget} /> : <HelpPanel />}</aside></div>}
+    <ProjectEditor projectName={project.name} messages={project.messages} activeTab={builderTab} draggingIndex={draggingIndex} footer={<><DeliveryConfig targets={project.targets} selectedTargetIds={selectedTargetIds} targetUrls={targetUrls} sending={sending} status={deliveryStatus} onSubmit={sendProject} onToggleTarget={(id, checked) => setSelectedTargetIds((current) => checked ? [...new Set([...current, id])] : current.filter((targetId) => targetId !== id))} onTargetNameChange={(id, name) => updateProject((current) => ({ ...current, targets: current.targets.map((target) => target.id === id ? { ...target, name } : target) }))} onTargetUrlChange={(id, url) => setTargetUrls((current) => ({ ...current, [id]: url }))} onAddTarget={addTarget} onRemoveTarget={removeTarget} /><HelpPanel /></>} onProjectNameChange={(name) => updateProject((current) => ({ ...current, name }))} onTabChange={setBuilderTab} onMessageChange={updateMessage} onAddMessage={addMessage} onDuplicateMessage={duplicateMessage} onRemoveMessage={removeMessage} onDragStart={startDrag} onDragOver={dragOver} onDrop={drop} onDragEnd={() => setDraggingIndex(null)} />
   </main>;
 }

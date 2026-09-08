@@ -73,14 +73,16 @@ describe('MezonHook project builder', () => {
     expect(screen.getByTestId('project-editor')).toHaveAttribute('data-builder-layout', 'two-pane-sequence');
   });
 
-  // Mutation caught: delivery stays a primary navigation screen instead of a compact topbar action and secondary drawer.
-  it('opens delivery from the compact Send action', async () => {
-    const user = userEvent.setup();
+  // Mutation caught: delivery and help return to separate topbar screens instead of staying in the builder flow.
+  it('keeps delivery targets and help inline below the message editor', () => {
     render(<App />);
 
-    await user.click(screen.getByRole('button', { name: 'Send' }));
-
-    expect(screen.getByRole('dialog', { name: 'Delivery configuration' })).toBeInTheDocument();
+    const delivery = screen.getByRole('heading', { name: 'Delivery targets' });
+    expect(delivery.closest('.editor-pane')).not.toBeNull();
+    expect(screen.getByLabelText('Webhook URL for Mezon channel')).toHaveAttribute('type', 'password');
+    expect(screen.getByText('Help and webhook guidance')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Config' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Help' })).not.toBeInTheDocument();
   });
 
   // Mutation caught: adding a project message does not add it to the ordered preview sequence.
@@ -126,7 +128,6 @@ describe('MezonHook project builder', () => {
   it('keeps target URLs masked and session-only in Config', async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole('button', { name: 'Config' }));
     const urlInput = screen.getByLabelText('Webhook URL for Mezon channel');
     await user.type(urlInput, 'https://webhook.mezon.ai/webhooks/123/session-secret');
     expect(urlInput).toHaveAttribute('type', 'password');
@@ -135,9 +136,7 @@ describe('MezonHook project builder', () => {
 
   // Mutation caught: the in-product setup path loses the official Mezon documentation link.
   it('shows in-app help with official Mezon documentation', async () => {
-    const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole('button', { name: 'Help' }));
     expect(screen.getByRole('link', { name: 'Open Mezon documentation' })).toHaveAttribute('href', 'https://mezon.ai/docs/vi/');
   });
 
@@ -163,7 +162,6 @@ describe('MezonHook project builder', () => {
   it('exports project JSON without a configured target URL', async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole('button', { name: 'Config' }));
     await user.type(screen.getByLabelText('Webhook URL for Mezon channel'), 'https://webhook.mezon.ai/webhooks/123/session-secret');
     let exportedBlob: Blob | undefined;
     class TestUrl extends URL {
@@ -182,7 +180,6 @@ describe('MezonHook project builder', () => {
     const user = userEvent.setup();
     const fetcher = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 204 }));
     render(<App />);
-    await user.click(screen.getByRole('button', { name: 'Config' }));
     await user.type(screen.getByLabelText('Webhook URL for Mezon channel'), 'https://webhook.mezon.ai/webhooks/123/session-secret');
     await user.click(screen.getByRole('button', { name: 'Send project' }));
     expect(await screen.findByText('Sent 1 message to 1 target.')).toBeInTheDocument();
