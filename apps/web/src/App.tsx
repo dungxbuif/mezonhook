@@ -2,9 +2,10 @@ import { useEffect, useState, type DragEvent, type FormEvent } from 'react';
 import { createWebhookProject, normalizeProject, validateProject, type MessageDraft, type WebhookProject } from '@mezonhook/schema';
 import { DeliveryConfig, type AppearanceTheme } from './components/DeliveryConfig';
 import { HelpPanel } from './components/HelpPanel';
+import { PayloadWorkbench } from './components/PayloadWorkbench';
 import { ProjectEditor } from './components/ProjectEditor';
 import { importProjectJson, readStoredProject, saveProject } from './project-storage';
-import { sendWebhookBatch } from './webhook';
+import { parseChannelWebhookEnvelope, sendChannelWebhookPayload } from './webhook';
 
 const MAX_MESSAGES = 20;
 const MAX_TARGETS = 10;
@@ -41,6 +42,8 @@ export default function App() {
   const [deliveryStatus, setDeliveryStatus] = useState<DeliveryStatus>(null);
   const [sending, setSending] = useState(false);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const [payloadText, setPayloadText] = useState(() => JSON.stringify({ type: 'hook', message: { t: '', mk: [], mentions: [], images: [], hg: [] } }, null, 2));
+  const [payloadError, setPayloadError] = useState<string | null>(null);
 
   useEffect(() => { saveProject(project); }, [project]);
   useEffect(() => { document.documentElement.dataset.theme = appearance; localStorage.setItem(APPEARANCE_STORAGE_KEY, appearance); }, [appearance]);
@@ -99,20 +102,24 @@ export default function App() {
     const targets = project.targets.filter((target) => selectedTargetIds.includes(target.id));
     if (targets.length === 0) { setDeliveryStatus({ kind: 'error', message: 'Select at least one target before sending.' }); return; }
     if (targets.some((target) => !targetUrls[target.id]?.trim())) { setDeliveryStatus({ kind: 'error', message: 'Enter a Channel Webhook URL for every selected target.' }); return; }
+    let payload;
+    try { payload = parseChannelWebhookEnvelope(payloadText); setPayloadError(null); }
+    catch (error) { const message = error instanceof Error ? error.message : 'Payload JSON is invalid.'; setPayloadError(message); setDeliveryStatus({ kind: 'error', message }); return; }
     setSending(true);
     try {
-      const count = await sendWebhookBatch(targets.map((target) => targetUrls[target.id]), project.messages);
+      for (const target of targets) await sendChannelWebhookPayload(targetUrls[target.id], payload);
+      const count = targets.length;
       setTargetUrls({});
-      setDeliveryStatus({ kind: 'success', message: `Sent ${count} ${count === 1 ? 'message' : 'messages'} to ${targets.length} ${targets.length === 1 ? 'target' : 'targets'}.` });
+      setDeliveryStatus({ kind: 'success', message: `Sent the live payload to ${count} ${count === 1 ? 'target' : 'targets'}.` });
     } catch (error) { setDeliveryStatus({ kind: 'error', message: error instanceof Error ? error.message : 'Could not send this project. Please try again.' }); } finally { setSending(false); }
   };
 
   return <main className="workspace-shell bg-theme-primary color-theme-primary">
-    <header className="channel-topbar bg-theme-direct-message border-b-theme-primary">
-      <div className="topbar-brand"><span className="topbar-logo" aria-hidden="true">M</span><span className="topbar-project" title={project.name}>{project.name}</span></div>
-      <div className="topbar-actions"><label className="topbar-button" htmlFor="project-import"><span aria-hidden="true">Import</span><span className="visually-hidden"> project</span></label><input id="project-import" className="visually-hidden" type="file" accept="application/json,.json" onChange={(event) => { void importProject(event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} /><button type="button" className="topbar-button" aria-label="Export project" onClick={exportProject}>Export</button><button type="submit" form="delivery-form" className="topbar-send">Send</button></div>
+    <header className="channel-topbar mezon-channel-topbar bg-theme-direct-message border-b-theme-primary">
+      <div className="topbar-brand"><span className="topbar-logo" aria-hidden="true">M</span><span className="topbar-project">MezonHook</span></div>
+      <div className="topbar-actions"><label className="topbar-button" htmlFor="project-import"><span className="topbar-action-label" aria-hidden="true">Import</span><span className="visually-hidden"> project</span></label><input id="project-import" className="visually-hidden" type="file" accept="application/json,.json" onChange={(event) => { void importProject(event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} /><button type="button" className="topbar-button" aria-label="Export project" onClick={exportProject}>Export</button><button type="submit" form="delivery-form" className="topbar-send">Send</button></div>
     </header>
     {projectError && <p className="form-alert global-alert" role="alert">{projectError}</p>}
-    <ProjectEditor projectName={project.name} messages={project.messages} activeTab={builderTab} draggingIndex={draggingIndex} footer={<><DeliveryConfig targets={project.targets} selectedTargetIds={selectedTargetIds} targetUrls={targetUrls} sending={sending} appearance={appearance} onAppearanceChange={setAppearance} status={deliveryStatus} onSubmit={sendProject} onToggleTarget={(id, checked) => setSelectedTargetIds((current) => checked ? [...new Set([...current, id])] : current.filter((targetId) => targetId !== id))} onTargetNameChange={(id, name) => updateProject((current) => ({ ...current, targets: current.targets.map((target) => target.id === id ? { ...target, name } : target) }))} onTargetUrlChange={(id, url) => setTargetUrls((current) => ({ ...current, [id]: url }))} onAddTarget={addTarget} onRemoveTarget={removeTarget} /><HelpPanel /></>} onProjectNameChange={(name) => updateProject((current) => ({ ...current, name }))} onTabChange={setBuilderTab} onMessageChange={updateMessage} onAddMessage={addMessage} onDuplicateMessage={duplicateMessage} onRemoveMessage={removeMessage} onDragStart={startDrag} onDragOver={dragOver} onDrop={drop} onDragEnd={() => setDraggingIndex(null)} />
+    <ProjectEditor messages={project.messages} activeTab={builderTab} draggingIndex={draggingIndex} guidance={<HelpPanel />} footer={<><PayloadWorkbench value={payloadText} error={payloadError} webhookUrl={targetUrls[selectedTargetIds[0] ?? '']} onChange={(value) => { setPayloadText(value); try { parseChannelWebhookEnvelope(value); setPayloadError(null); } catch (error) { setPayloadError(error instanceof Error ? error.message : 'Payload JSON is invalid.'); } }} /><DeliveryConfig targets={project.targets} selectedTargetIds={selectedTargetIds} targetUrls={targetUrls} sending={sending || Boolean(payloadError)} appearance={appearance} onAppearanceChange={setAppearance} status={deliveryStatus} onSubmit={sendProject} onToggleTarget={(id, checked) => setSelectedTargetIds((current) => checked ? [...new Set([...current, id])] : current.filter((targetId) => targetId !== id))} onTargetNameChange={(id, name) => updateProject((current) => ({ ...current, targets: current.targets.map((target) => target.id === id ? { ...target, name } : target) }))} onTargetUrlChange={(id, url) => setTargetUrls((current) => ({ ...current, [id]: url }))} onAddTarget={addTarget} onRemoveTarget={removeTarget} /></>} onTabChange={setBuilderTab} onMessageChange={updateMessage} onAddMessage={addMessage} onDuplicateMessage={duplicateMessage} onRemoveMessage={removeMessage} onDragStart={startDrag} onDragOver={dragOver} onDrop={drop} onDragEnd={() => setDraggingIndex(null)} />
   </main>;
 }

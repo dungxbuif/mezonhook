@@ -1,8 +1,16 @@
 import { createAnnouncementDraft, createDraftFromTemplate, toMezonContent } from '@mezonhook/schema';
 import { describe, expect, it, vi } from 'vitest';
-import { sendWebhook, sendWebhookBatch, validateWebhookUrl } from './webhook';
+import { parseChannelWebhookEnvelope, sendChannelWebhookPayload, sendWebhook, sendWebhookBatch, validateWebhookUrl } from './webhook';
 
 describe('Mezon Channel Webhooks', () => {
+  it('accepts and sends the live documented payload unchanged', async () => {
+    const payload = parseChannelWebhookEnvelope('{"type":"hook","message":{"t":"Hello","mk":[],"mentions":[],"images":[],"hg":[]}}');
+    const fetcher = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    await sendChannelWebhookPayload('https://webhook.mezon.ai/webhooks/123/token', payload, fetcher);
+    expect(JSON.parse((fetcher.mock.calls[0][1] as RequestInit).body as string)).toEqual(payload);
+    expect(() => parseChannelWebhookEnvelope('{')).toThrow('Payload JSON is invalid.');
+    expect(() => parseChannelWebhookEnvelope('{"type":"hook","message":{}}')).toThrow('message.t must be a string.');
+  });
   it('sends each message in order to each target and returns the delivery count', async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
     const count = await sendWebhookBatch(

@@ -22,6 +22,12 @@ afterEach(() => {
 });
 
 describe('MezonHook project builder', () => {
+  it('offers copyable webhook and Bot SDK code samples for the live payload', () => {
+    render(<App />);
+    expect(screen.getByRole('button', { name: 'Copy cURL' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy JS Bot SDK' })).toBeInTheDocument();
+    expect(screen.getByText(/Keep message\.t as plain text/)).toBeInTheDocument();
+  });
   // Mutation caught: the builder falls back to a long ungrouped form instead of collapsible composer sections.
   it('uses collapsible composer cards for the selected message', async () => {
     const user = userEvent.setup();
@@ -84,6 +90,39 @@ describe('MezonHook project builder', () => {
     expect(screen.getByText('Help and webhook guidance')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Config' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Help' })).not.toBeInTheDocument();
+  });
+
+  it('places help guidance before the payload and delivery configuration', () => {
+    render(<App />);
+
+    const editor = screen.getByRole('region', { name: 'Message editors' });
+    const help = screen.getByText('Help and webhook guidance');
+    const payload = screen.getByRole('heading', { name: 'Live payload' });
+    const delivery = screen.getByRole('heading', { name: 'Delivery targets' });
+
+    expect(editor.contains(help)).toBe(true);
+    expect(help.compareDocumentPosition(payload) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(help.compareDocumentPosition(delivery) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('uses one consistent shell for guide, payload, and delivery sections', () => {
+    render(<App />);
+
+    expect(screen.getByText('Help and webhook guidance').closest('.builder-section')).not.toBeNull();
+    expect(screen.getByRole('region', { name: 'Live payload' })).toHaveClass('builder-section');
+    expect(screen.getByRole('region', { name: 'Delivery targets' })).toHaveClass('builder-section');
+  });
+
+  it('keeps the import action label isolated from form-label spacing', () => {
+    render(<App />);
+
+    expect(screen.getByText('Import')).toHaveClass('topbar-action-label');
+  });
+
+  it('marks the header as the Mezon single-row channel topbar', () => {
+    render(<App />);
+
+    expect(document.querySelector('main > header')).toHaveClass('mezon-channel-topbar');
   });
 
   // Mutation caught: appearance selection stops using a persisted, non-sensitive root theme preference.
@@ -170,7 +209,7 @@ describe('MezonHook project builder', () => {
       targets: [{ id: 'target-1', name: 'Imported channel' }],
     };
     await user.upload(screen.getByLabelText('Import project'), new File([JSON.stringify(project)], 'project.json', { type: 'application/json' }));
-    expect(await screen.findByDisplayValue('Imported project')).toBeInTheDocument();
+    expect(await screen.findByText('MezonHook')).toBeInTheDocument();
     expect(screen.getAllByTestId('message-preview')).toHaveLength(2);
   });
 
@@ -198,7 +237,7 @@ describe('MezonHook project builder', () => {
     render(<App />);
     await user.type(screen.getByLabelText('Webhook URL for Mezon channel'), 'https://webhook.mezon.ai/webhooks/123/session-secret');
     await user.click(screen.getByRole('button', { name: 'Send project' }));
-    expect(await screen.findByText('Sent 1 message to 1 target.')).toBeInTheDocument();
+    expect(await screen.findByText('Sent the live payload to 1 target.')).toBeInTheDocument();
     expect(fetcher).toHaveBeenCalledOnce();
     expect(screen.getByLabelText('Webhook URL for Mezon channel')).toHaveValue('');
   });
