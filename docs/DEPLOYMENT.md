@@ -26,6 +26,27 @@ Open `http://localhost:8080`. The runtime is an unprivileged nginx Alpine image 
 
 The maintained demo is available at [https://mezonhook.dungxbuif.com](https://mezonhook.dungxbuif.com). Its reverse proxy routes HTTPS traffic to the Docker container; deploy a rebuilt image after `npm test` and the web production build succeed.
 
+## Homelab CI/CD
+
+The local enrollment gate passed on 2026-11-01:
+
+```bash
+npm test
+npm run build --workspace @mezonhook/web
+```
+
+The lab release flow uses a `prod-<semver>` application tag. The Mac runner
+validates the workspaces, builds `linux/amd64`, publishes one immutable registry
+digest, and updates only the MezonHook manifest/catalog in `homelab-ops`. That
+promotion creates `mezonhook-prod-<semver>`; the protected VM100 runner then
+updates the `mezonhook` Swarm service with rollback-on-failure and verifies the
+public HTTPS route. The app pipeline does not SSH to VM100 or receive its Docker
+socket. This app has no migration or runtime secret gate.
+
+The current GitLab checkout is still on `codex/mvp-webhook-builder`; no
+production tag is valid until the declared release branch is created or the
+current branch is explicitly integrated into it.
+
 ## Sending to Mezon and CORS
 
 Users configure a Channel Webhook in Mezon, copy its URL, and paste it into MezonHook for the current browser session. The URL has the form `https://webhook.mezon.ai/webhooks/{channelId}/{token}` and is sent directly from the browser to Mezon.
