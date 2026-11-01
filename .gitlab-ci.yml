@@ -24,7 +24,7 @@ variables:
 
 validate:
   stage: validate
-  image: node:20-alpine
+  image: node:20-bookworm-slim
   tags: [homelab-rootless]
   script:
     - npm ci
