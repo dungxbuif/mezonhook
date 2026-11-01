@@ -26,6 +26,20 @@ Open `http://localhost:8080`. The runtime is an unprivileged nginx Alpine image 
 
 The maintained demo is available at [https://mezonhook.dungxbuif.com](https://mezonhook.dungxbuif.com). Its reverse proxy routes HTTPS traffic to the Docker container; deploy a rebuilt image after `npm test` and the web production build succeed.
 
+## GitLab delivery
+
+GitLab CI runs the same npm test and production build as GitHub Actions. A
+`dev-*`, `staging-*`, or `prod-*` tag is valid only when its commit is reachable
+from protected `main`; tagged builds publish an immutable image to the GitLab
+Container Registry. The protected manual `prod-*` job updates the existing
+`mezonhook` Swarm service by digest and verifies the public URL. Configure
+project-scoped masked/protected variables before using it:
+
+- `MEZONHOOK_SWARM_MANAGER_HOST`, `MEZONHOOK_SWARM_MANAGER_USER`
+- `MEZONHOOK_SWARM_SSH_PRIVATE_KEY`, `MEZONHOOK_SWARM_KNOWN_HOSTS`
+
+No webhook URL or user data is passed through CI.
+
 ## Sending to Mezon and CORS
 
 Users configure a Channel Webhook in Mezon, copy its URL, and paste it into MezonHook for the current browser session. The URL has the form `https://webhook.mezon.ai/webhooks/{channelId}/{token}` and is sent directly from the browser to Mezon.
