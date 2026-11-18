@@ -14,6 +14,8 @@ Treat the URL as a password. Do not paste it into source code, tickets, screensh
 
 ## 2. Compose messages
 
+A fresh project begins with `Deployment completed successfully.` so the preview is immediately meaningful. Replace it with the message you intend to send; this example is not sent automatically.
+
 1. Enter the message text.
 2. Open only the optional groups you need:
    - **Formatting** for `pre` or link ranges.
@@ -21,7 +23,7 @@ Treat the URL as a password. Do not paste it into source code, tickets, screensh
    - **Images** for hosted HTTPS image metadata.
    - **Channel references** for a channel ID plus its text range.
 3. Use **Add message**, **Duplicate**, and the arrow buttons to create the exact delivery order.
-4. Review the right-hand preview. On mobile, switch between **Compose** and **Preview** tabs.
+4. Review the right-hand preview. On desktop it stays below the header while the page scrolls; the composer, Advanced section, and Delivery remain in one natural document flow. On mobile and tablet, switch between **Compose** and **Preview** tabs.
 
 Every range is zero-based, start-inclusive, and end-exclusive. For example, selecting the first four characters uses `s: 0` and `e: 4`.
 
@@ -42,7 +44,7 @@ The **Theme** selector is in the top bar because it affects the whole workspace.
 
 In **Delivery**:
 
-1. Name each target.
+1. Name each target. A fresh project uses `Production alerts`; rename it to match your channel or workflow.
 2. Paste its webhook URL into the password-masked field.
 3. Select the targets that should receive the sequence.
 4. Use the single **Send N messages** button.

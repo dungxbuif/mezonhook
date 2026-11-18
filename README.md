@@ -18,6 +18,8 @@ Bot-only embeds and interactive components are intentionally not mixed into the 
 
 Projects support up to 20 ordered messages and 10 named webhook targets. Projects persist locally and can be imported or exported as JSON. Webhook URLs remain password-masked in memory and are cleared after a successful send; they are never written into local storage or project exports.
 
+A fresh project starts with the editable example `Deployment completed successfully.` and the target name `Production alerts`. Existing saved and imported projects retain their own content and target names.
+
 ## Prerequisites
 
 - Node.js 20, 21, 22, or 23
@@ -34,7 +36,7 @@ npm run build --workspace @mezonhook/web
 npm run dev --workspace @mezonhook/web
 ```
 
-Open the local Vite URL. Use **Compose** for the normal workflow, switch to **Preview** on narrow screens, and open **Advanced JSON and code** only when protocol-level inspection is needed.
+Open the local Vite URL. On desktop, the page scrolls normally while the right-hand preview stays visible below the sticky header. On narrow screens, use the **Compose** and **Preview** tabs. Open **Advanced JSON and code** only when protocol-level inspection is needed.
 
 ## Live verification
 
