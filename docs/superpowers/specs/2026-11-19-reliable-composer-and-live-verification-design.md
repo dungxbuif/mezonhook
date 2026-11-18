@@ -43,11 +43,19 @@ Alternatives rejected:
 ## UX structure
 
 - Header: product mark, global theme, and import/export. The theme stays visible because it affects the entire workspace.
-- Desktop: 60% composer and 40% sticky preview.
+- Desktop: a naturally scrolling page with a 60% composer and 40% sticky preview. The page owns vertical scrolling; editor and preview panes must not create nested full-height scroll regions.
 - Mobile: Compose and Preview tabs with no horizontal scrolling.
 - Composer: text first; collapsed optional formatting/mention/image/channel-reference groups; visible reorder controls.
 - Advanced: raw JSON, cURL, Bot SDK sample, validation status, and copied feedback.
 - Delivery: selected targets, masked URLs, and the only submit path.
+
+### Production layout correction
+
+The production audit at 1920×1080, 1440×900, and 375×812 found no horizontal document overflow, but the desktop workspace felt broken because `100vh`/`overflow: hidden` on the shell forced a second vertical scrollbar inside the editor. The fixed-height split also left the preview mostly empty while pushing Delivery below the editor viewport.
+
+The approved correction keeps the 60/40 comparison layout but lets the document scroll naturally. The top bar and preview stay sticky on desktop, the editor grows with its content, and Delivery remains in the normal reading flow. Below 1000px the existing Compose/Preview tabs remain, with sticky behavior removed so each active pane follows normal document flow.
+
+Fresh projects use task-oriented examples: message text `Deployment completed successfully.` and target name `Production alerts`. Stored and imported projects keep their own values; changing defaults must not overwrite local project data.
 
 ## Protocol model
 
@@ -67,8 +75,9 @@ For Bot SDK delivery, `t`, `mk`, and `hg` stay in `content`; `mentions` is the s
 
 - Unit tests: schema validation, v2 migration, exact envelope serialization, exact code generation, and strict rejection of unknown or mistyped fields.
 - Component tests: form ↔ JSON bidirectional synchronization, disabled send state, restored target selection, ordered multi-message delivery, accessible reorder controls, and progressive disclosure.
+- Default tests: a fresh project uses `Deployment completed successfully.` and `Production alerts`, while stored projects remain unchanged.
 - Build: TypeScript and Vite production build.
-- Responsive UI: Chromium checks at 375×812, 844×390, 768×1024, and 1440×900, including keyboard navigation and reduced motion.
+- Responsive UI: Chromium checks at 375×812, 844×390, 768×1024, 1440×900, and 1920×1080, including no horizontal overflow, one document scrollbar, sticky desktop preview, keyboard navigation, and reduced motion.
 - Live webhook matrix: plain text, `pre`, `lk`, safe bot-self mention, hosted image, and channel hashtag.
 - Live bot matrix: the generated JS flow for text/format/ranges/mentions/attachments plus SDK-only embed, buttons, input, select, radio, and date picker.
 - Each live message contains a unique audit marker and the result is recorded in `docs/LIVE-VERIFICATION.md` without credentials.

@@ -632,7 +632,7 @@ export function validateChannelWebhookMessage(value: unknown): ValidationResult 
   return { valid: errors.length === 0, errors };
 }
 
-export function createChannelWebhookMessage(text = 'Hello from MezonHook!'): ChannelWebhookMessage {
+export function createChannelWebhookMessage(text = 'Deployment completed successfully.'): ChannelWebhookMessage {
   return { t: text, mk: [], mentions: [], images: [], hg: [] };
 }
 
@@ -655,7 +655,7 @@ export function createChannelWebhookProject(): ChannelWebhookProject {
     version: 3,
     name: 'Untitled webhook project',
     messages: [createChannelWebhookMessage()],
-    targets: [{ id: createTargetId(1), name: 'Mezon channel' }],
+    targets: [{ id: createTargetId(1), name: 'Production alerts' }],
   };
 }
 

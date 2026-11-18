@@ -32,8 +32,8 @@ describe('Channel Webhook v3 schema', () => {
     expect(createChannelWebhookProject()).toEqual({
       version: 3,
       name: 'Untitled webhook project',
-      messages: [{ t: 'Hello from MezonHook!', mk: [], mentions: [], images: [], hg: [] }],
-      targets: [{ id: 'target-1', name: 'Mezon channel' }],
+      messages: [{ t: 'Deployment completed successfully.', mk: [], mentions: [], images: [], hg: [] }],
+      targets: [{ id: 'target-1', name: 'Production alerts' }],
     });
   });
 

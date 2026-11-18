@@ -40,8 +40,15 @@ describe('MezonHook reliable composer', () => {
     await user.click(screen.getByText('Advanced JSON and code'));
     const raw = screen.getByRole('textbox', { name: 'Live payload' });
     fireEvent.change(raw, { target: { value: '{bad' } });
-    expect(screen.getByLabelText('Message text')).toHaveValue('Hello from MezonHook!');
+    expect(screen.getByLabelText('Message text')).toHaveValue('Deployment completed successfully.');
     for (const button of screen.getAllByRole('button', { name: /Send/ })) expect(button).toBeDisabled();
+  });
+
+  it('starts a fresh project with task-oriented message and target defaults', () => {
+    render(<App />);
+    expect(screen.getByLabelText('Message text')).toHaveValue('Deployment completed successfully.');
+    expect(screen.getByRole('checkbox', { name: 'Send to Production alerts' })).toBeChecked();
+    expect(screen.getByLabelText('Webhook URL for Production alerts')).toBeInTheDocument();
   });
 
   it('explains invalid form content and hides runnable samples', async () => {
@@ -86,7 +93,7 @@ describe('MezonHook reliable composer', () => {
     await user.type(textboxes[0], 'First');
     await user.clear(textboxes[1]);
     await user.type(textboxes[1], 'Second');
-    await user.type(screen.getByLabelText('Webhook URL for Mezon channel'), 'https://webhook.mezon.ai/webhooks/123/session-secret');
+    await user.type(screen.getByLabelText('Webhook URL for Production alerts'), 'https://webhook.mezon.ai/webhooks/123/session-secret');
     await user.click(screen.getByRole('button', { name: 'Send 2 messages' }));
     expect(await screen.findByText('Sent 2 messages to 1 target (2 deliveries).')).toBeInTheDocument();
     expect(fetcher.mock.calls.map(([, request]) => JSON.parse((request as RequestInit).body as string).message.t)).toEqual(['First', 'Second']);
@@ -95,7 +102,7 @@ describe('MezonHook reliable composer', () => {
   it('keeps target secrets out of persisted project data', async () => {
     const user = userEvent.setup();
     render(<App />);
-    const url = screen.getByLabelText('Webhook URL for Mezon channel');
+    const url = screen.getByLabelText('Webhook URL for Production alerts');
     await user.type(url, 'https://webhook.mezon.ai/webhooks/123/session-secret');
     expect(url).toHaveAttribute('type', 'password');
     await waitFor(() => expect(localStorage.getItem('mezonhook:project:v3')).not.toContain('session-secret'));
