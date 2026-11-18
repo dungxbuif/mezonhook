@@ -109,14 +109,19 @@ describe('MezonHook reliable composer', () => {
   it('keeps secondary protocol tooling in progressive disclosure', () => {
     render(<App />);
     expect(screen.getByText('Advanced JSON and code').closest('details')).not.toHaveAttribute('open');
+    for (const name of ['Formatting', 'Mentions', 'Images', 'Channel references']) {
+      expect(screen.getByText(name).closest('details')).not.toHaveAttribute('open');
+    }
     expect(screen.getByRole('heading', { name: 'Compose webhook messages' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Delivery' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /Send 1 message/ })).toHaveLength(1);
   });
 
   it('edits all five documented webhook field groups', async () => {
     const user = userEvent.setup();
     render(<App />);
     const editor = screen.getByRole('group', { name: 'Message 1 fields' });
+    for (const name of ['Formatting', 'Mentions', 'Images', 'Channel references']) await user.click(within(editor).getByText(name));
     for (const name of ['Add formatting', 'Add mention', 'Add image', 'Add channel reference']) await user.click(within(editor).getByRole('button', { name }));
     expect(within(editor).getByLabelText('Formatting type 1')).toBeInTheDocument();
     expect(within(editor).getByLabelText('Mention identity 1')).toBeInTheDocument();

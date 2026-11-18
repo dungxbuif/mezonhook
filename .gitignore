@@ -3,3 +3,7 @@ packages/*/dist/
 apps/*/dist/
 # Mezon cache
 /mezon-cache
+
+# Local browser audit artifacts
+/.playwright-cli
+/output

@@ -32,18 +32,21 @@ export function ChannelMessageEditor({ message, index, canRemove, canMoveUp, can
       <label className="full-width"><span>Message text</span><textarea value={message.t} rows={5} maxLength={2000} onChange={(event) => update('t', event.target.value)} /></label>
       <p className="field-help">Ranges use zero-based start-inclusive/end-exclusive indexes in this text.</p>
 
-      <section className="field-collection" aria-labelledby={`formatting-${index}`}>
-        <div className="collection-heading"><h3 id={`formatting-${index}`}>Formatting</h3><button type="button" className="secondary-button" disabled={message.t.length === 0} onClick={() => update('mk', [...message.mk, { type: 'pre', s: 0, e: initialEnd }])}>Add formatting</button></div>
+      <details className="field-collection">
+        <summary><span>Formatting</span><span className="collection-count">{message.mk.length}</span></summary>
+        <div className="collection-body"><div className="collection-heading"><p>Preformatted and link ranges</p><button type="button" className="secondary-button" disabled={message.t.length === 0} onClick={() => update('mk', [...message.mk, { type: 'pre', s: 0, e: initialEnd }])}>Add formatting</button></div>
         {message.mk.map((entry, item) => <div className="collection-row" key={`mk-${item}`}>
           <label><span>Type</span><select aria-label={`Formatting type ${item + 1}`} value={entry.type} onChange={(event) => update('mk', message.mk.map((current, position) => position === item ? { ...current, type: event.target.value as 'pre' | 'lk' } : current))}><option value="pre">Preformatted</option><option value="lk">Link</option></select></label>
           <label><span>Start</span><input aria-label={`Formatting start ${item + 1}`} inputMode="numeric" type="number" min="0" value={entry.s} onChange={(event) => update('mk', message.mk.map((current, position) => position === item ? { ...current, s: number(event.target.value) } : current))} /></label>
           <label><span>End</span><input aria-label={`Formatting end ${item + 1}`} inputMode="numeric" type="number" min="1" value={entry.e} onChange={(event) => update('mk', message.mk.map((current, position) => position === item ? { ...current, e: number(event.target.value) } : current))} /></label>
           <button type="button" className="remove-button" aria-label={`Remove formatting ${item + 1}`} onClick={() => update('mk', message.mk.filter((_, position) => position !== item))}>Remove</button>
         </div>)}
-      </section>
+        </div>
+      </details>
 
-      <section className="field-collection" aria-labelledby={`mentions-${index}`}>
-        <div className="collection-heading"><h3 id={`mentions-${index}`}>Mentions</h3><button type="button" className="secondary-button" disabled={message.t.length === 0} onClick={() => update('mentions', [...message.mentions, { user_id: '', s: 0, e: initialEnd }])}>Add mention</button></div>
+      <details className="field-collection">
+        <summary><span>Mentions</span><span className="collection-count">{message.mentions.length}</span></summary>
+        <div className="collection-body"><div className="collection-heading"><p>Reference a user range</p><button type="button" className="secondary-button" disabled={message.t.length === 0} onClick={() => update('mentions', [...message.mentions, { user_id: '', s: 0, e: initialEnd }])}>Add mention</button></div>
         {message.mentions.map((entry, item) => {
           const mode = entry.username !== undefined ? 'username' : 'user_id';
           const identity = entry.username ?? entry.user_id ?? '';
@@ -54,25 +57,30 @@ export function ChannelMessageEditor({ message, index, canRemove, canMoveUp, can
             <button type="button" className="remove-button" aria-label={`Remove mention ${item + 1}`} onClick={() => update('mentions', message.mentions.filter((_, position) => position !== item))}>Remove</button>
           </div>;
         })}
-      </section>
+        </div>
+      </details>
 
-      <section className="field-collection" aria-labelledby={`images-${index}`}>
-        <div className="collection-heading"><h3 id={`images-${index}`}>Images</h3><button type="button" className="secondary-button" onClick={() => update('images', [...message.images, { fn: '', sz: 0, url: '', ft: 'image/png', w: 0, h: 0 }])}>Add image</button></div>
+      <details className="field-collection">
+        <summary><span>Images</span><span className="collection-count">{message.images.length}</span></summary>
+        <div className="collection-body"><div className="collection-heading"><p>Attach HTTPS image metadata</p><button type="button" className="secondary-button" onClick={() => update('images', [...message.images, { fn: '', sz: 0, url: '', ft: 'image/png', w: 0, h: 0 }])}>Add image</button></div>
         {message.images.map((entry, item) => <div className="collection-row collection-row--image" key={`image-${item}`}>
           <label><span>Image URL</span><input aria-label={`Image URL ${item + 1}`} type="url" value={entry.url} onChange={(event) => update('images', message.images.map((current, position) => position === item ? { ...current, url: event.target.value } : current))} /></label>
           {(['fn', 'ft', 'sz', 'w', 'h'] as const).map((key) => <label key={key}><span>{key}</span><input aria-label={`Image ${key} ${item + 1}`} value={entry[key]} type={['sz', 'w', 'h'].includes(key) ? 'number' : 'text'} onChange={(event) => update('images', message.images.map((current, position) => position === item ? { ...current, [key]: ['sz', 'w', 'h'].includes(key) ? number(event.target.value) : event.target.value } : current))} /></label>)}
           <button type="button" className="remove-button" aria-label={`Remove image ${item + 1}`} onClick={() => update('images', message.images.filter((_, position) => position !== item))}>Remove</button>
         </div>)}
-      </section>
+        </div>
+      </details>
 
-      <section className="field-collection" aria-labelledby={`channels-${index}`}>
-        <div className="collection-heading"><h3 id={`channels-${index}`}>Channel references</h3><button type="button" className="secondary-button" disabled={message.t.length === 0} onClick={() => update('hg', [...message.hg, { channelId: '', s: 0, e: initialEnd }])}>Add channel reference</button></div>
+      <details className="field-collection">
+        <summary><span>Channel references</span><span className="collection-count">{message.hg.length}</span></summary>
+        <div className="collection-body"><div className="collection-heading"><p>Reference a Mezon channel range</p><button type="button" className="secondary-button" disabled={message.t.length === 0} onClick={() => update('hg', [...message.hg, { channelId: '', s: 0, e: initialEnd }])}>Add channel reference</button></div>
         {message.hg.map((entry, item) => <div className="collection-row" key={`hg-${item}`}>
           <label><span>Channel ID</span><input aria-label={`Channel ID ${item + 1}`} value={entry.channelId} onChange={(event) => update('hg', message.hg.map((current, position) => position === item ? { ...current, channelId: event.target.value } : current))} /></label>
           <RangeInputs prefix="Channel" item={item} s={entry.s} e={entry.e} onRange={(s, e) => update('hg', message.hg.map((current, position) => position === item ? { ...current, s, e } : current))} />
           <button type="button" className="remove-button" aria-label={`Remove channel reference ${item + 1}`} onClick={() => update('hg', message.hg.filter((_, position) => position !== item))}>Remove</button>
         </div>)}
-      </section>
+        </div>
+      </details>
     </fieldset>
   </article>;
 }

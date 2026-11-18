@@ -18,6 +18,7 @@ const MAX_MESSAGES = 20;
 const MAX_TARGETS = 10;
 const APPEARANCE_STORAGE_KEY = 'mezonhook:appearance';
 const themes: AppearanceTheme[] = ['dark', 'light', 'abyss', 'purple-haze', 'sunrise', 'sunset'];
+const themeLabels: Record<AppearanceTheme, string> = { dark: 'Dark', light: 'Light', abyss: 'Abyss', 'purple-haze': 'Purple Haze', sunrise: 'Sunrise', sunset: 'Sunset' };
 type BuilderTab = 'editor' | 'preview';
 type DeliveryStatus = { kind: 'success' | 'error'; message: string } | null;
 
@@ -113,12 +114,12 @@ export default function App() {
       <PayloadWorkbench value={payloadText} error={payloadError} webhookUrl={targetUrls[selectedTargetIds[0] ?? '']} onChange={changeRawPayload} />
     </div></details>
     <HelpPanel />
-    <DeliveryConfig targets={project.targets} selectedTargetIds={selectedTargetIds} targetUrls={targetUrls} disabled={sendDisabled} sending={sending} messageCount={project.messages.length} appearance={appearance} status={deliveryStatus} onSubmit={sendProject} onToggleTarget={(id, checked) => setSelectedTargetIds((current) => checked ? [...new Set([...current, id])] : current.filter((targetId) => targetId !== id))} onTargetNameChange={(id, name) => setProject({ ...project, targets: project.targets.map((target) => target.id === id ? { ...target, name } : target) })} onTargetUrlChange={(id, url) => setTargetUrls((current) => ({ ...current, [id]: url }))} onAddTarget={addTarget} onRemoveTarget={removeTarget} onAppearanceChange={setAppearance} />
+    <DeliveryConfig targets={project.targets} selectedTargetIds={selectedTargetIds} targetUrls={targetUrls} disabled={sendDisabled} sending={sending} messageCount={project.messages.length} status={deliveryStatus} onSubmit={sendProject} onToggleTarget={(id, checked) => setSelectedTargetIds((current) => checked ? [...new Set([...current, id])] : current.filter((targetId) => targetId !== id))} onTargetNameChange={(id, name) => setProject({ ...project, targets: project.targets.map((target) => target.id === id ? { ...target, name } : target) })} onTargetUrlChange={(id, url) => setTargetUrls((current) => ({ ...current, [id]: url }))} onAddTarget={addTarget} onRemoveTarget={removeTarget} />
   </>;
 
   return <main className="workspace-shell">
     <a className="skip-link" href="#composer">Skip to composer</a>
-    <header className="channel-topbar"><div className="topbar-brand"><span className="topbar-logo" aria-hidden="true">M</span><span className="topbar-project">MezonHook</span></div><div className="topbar-actions"><label className="topbar-button" htmlFor="project-import"><span aria-hidden="true">Import</span><span className="visually-hidden"> project</span></label><input id="project-import" className="visually-hidden" type="file" accept="application/json,.json" onChange={(event) => { void importProject(event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} /><button type="button" className="topbar-button" aria-label="Export project" onClick={exportProject}>Export</button><button type="submit" form="delivery-form" className="topbar-send" disabled={sendDisabled}>Send</button></div></header>
+    <header className="channel-topbar"><div className="topbar-brand"><span className="topbar-logo" aria-hidden="true">M</span><span className="topbar-project">MezonHook</span></div><div className="topbar-actions"><label className="topbar-theme"><span className="visually-hidden">Theme</span><select aria-label="Appearance theme" value={appearance} onChange={(event) => setAppearance(event.target.value as AppearanceTheme)}>{themes.map((theme) => <option value={theme} key={theme}>{themeLabels[theme]}</option>)}</select></label><label className="topbar-button" htmlFor="project-import"><span aria-hidden="true">Import</span><span className="visually-hidden"> project</span></label><input id="project-import" className="visually-hidden" type="file" accept="application/json,.json" onChange={(event) => { void importProject(event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} /><button type="button" className="topbar-button" aria-label="Export project" onClick={exportProject}>Export</button></div></header>
     {projectError && <p className="form-alert global-alert" role="alert">{projectError}</p>}
     <ProjectEditor messages={project.messages} activeTab={builderTab} secondary={secondary} onTabChange={setBuilderTab} onMessageChange={updateMessage} onAddMessage={addMessage} onDuplicateMessage={duplicateMessage} onRemoveMessage={removeMessage} onMoveMessage={moveMessage} />
   </main>;

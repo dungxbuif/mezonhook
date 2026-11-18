@@ -3,11 +3,6 @@ import type { FormEvent } from 'react';
 
 export type AppearanceTheme = 'dark' | 'light' | 'abyss' | 'purple-haze' | 'sunrise' | 'sunset';
 
-const themes: Array<{ value: AppearanceTheme; label: string }> = [
-  { value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }, { value: 'abyss', label: 'Abyss' },
-  { value: 'purple-haze', label: 'Purple Haze' }, { value: 'sunrise', label: 'Sunrise' }, { value: 'sunset', label: 'Sunset' },
-];
-
 type Props = {
   targets: ChannelWebhookProject['targets'];
   selectedTargetIds: string[];
@@ -15,7 +10,6 @@ type Props = {
   disabled: boolean;
   sending: boolean;
   messageCount: number;
-  appearance: AppearanceTheme;
   status: { kind: 'success' | 'error'; message: string } | null;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onToggleTarget: (id: string, checked: boolean) => void;
@@ -23,12 +17,11 @@ type Props = {
   onTargetUrlChange: (id: string, url: string) => void;
   onAddTarget: () => void;
   onRemoveTarget: (id: string) => void;
-  onAppearanceChange: (theme: AppearanceTheme) => void;
 };
 
-export function DeliveryConfig({ targets, selectedTargetIds, targetUrls, disabled, sending, messageCount, appearance, status, onSubmit, onToggleTarget, onTargetNameChange, onTargetUrlChange, onAddTarget, onRemoveTarget, onAppearanceChange }: Props) {
+export function DeliveryConfig({ targets, selectedTargetIds, targetUrls, disabled, sending, messageCount, status, onSubmit, onToggleTarget, onTargetNameChange, onTargetUrlChange, onAddTarget, onRemoveTarget }: Props) {
   return <section className="builder-section delivery-section" aria-labelledby="delivery-title">
-    <div className="section-heading"><div><p className="eyebrow">Step 3</p><h2 id="delivery-title">Delivery</h2></div><label className="theme-field"><span>Theme</span><select aria-label="Appearance theme" value={appearance} onChange={(event) => onAppearanceChange(event.target.value as AppearanceTheme)}>{themes.map((theme) => <option value={theme.value} key={theme.value}>{theme.label}</option>)}</select></label></div>
+    <div className="section-heading"><div><p className="eyebrow">Step 3</p><h2 id="delivery-title">Delivery</h2></div></div>
     <p className="editor-intro">Webhook URLs stay masked in memory and are cleared after a successful send.</p>
     <form id="delivery-form" onSubmit={onSubmit} className="target-list">
       {targets.map((target) => <fieldset className="target-row" key={target.id}><legend>{target.name}</legend>
