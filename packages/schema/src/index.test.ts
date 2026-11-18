@@ -33,11 +33,11 @@ describe('Channel Webhook v3 schema', () => {
       version: 3,
       name: 'Production deployment demo',
       messages: [{
-        t: 'Deployment v1.4.2 completed successfully.\n@ops-team please verify #production-alerts.',
-        mk: [{ type: 'pre', s: 11, e: 17 }],
-        mentions: [{ username: 'ops-team', s: 42, e: 51 }],
-        images: [],
-        hg: [{ channelId: 'production-alerts', s: 66, e: 84 }],
+        t: '🚀 Release v2.4.0 is live in production.\nRunbook: https://mezonhook.dungxbuif.com/\n@demo-ops please verify API health and report in #demo-production-alerts.\nScreenshot attached for visual verification.',
+        mk: [{ type: 'pre', s: 11, e: 17 }, { type: 'lk', s: 50, e: 82 }],
+        mentions: [{ username: 'demo-ops', s: 83, e: 92 }],
+        images: [{ fn: 'thumbnail_dog1.jpg', sz: 5620, url: 'https://cdn.mezon.vn/0/1843962578301095936/1829065039080853500/95_0thumbnail_dog1.jpg', ft: 'image/jpeg', w: 275, h: 183 }],
+        hg: [{ channelId: 'demo-production-alerts', s: 132, e: 155 }],
       }],
       targets: [{ id: 'target-1', name: 'Production alerts' }],
     });

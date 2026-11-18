@@ -40,13 +40,20 @@ describe('MezonHook reliable composer', () => {
     await user.click(screen.getByText('Advanced JSON and code'));
     const raw = screen.getByRole('textbox', { name: 'Live payload' });
     fireEvent.change(raw, { target: { value: '{bad' } });
-    expect(screen.getByLabelText('Message text')).toHaveValue('Deployment v1.4.2 completed successfully.\n@ops-team please verify #production-alerts.');
+    expect(screen.getByLabelText('Message text')).toHaveValue('🚀 Release v2.4.0 is live in production.\nRunbook: https://mezonhook.dungxbuif.com/\n@demo-ops please verify API health and report in #demo-production-alerts.\nScreenshot attached for visual verification.');
     for (const button of screen.getAllByRole('button', { name: /Send/ })) expect(button).toBeDisabled();
   });
 
-  it('starts a fresh project with task-oriented message and target defaults', () => {
+  it('starts a fresh project with a meaningful full-feature webhook demo', () => {
     render(<App />);
-    expect(screen.getByLabelText('Message text')).toHaveValue('Deployment v1.4.2 completed successfully.\n@ops-team please verify #production-alerts.');
+    expect((screen.getByLabelText('Message text') as HTMLTextAreaElement).value).toContain('Release v2.4.0 is live');
+    const editor = screen.getByRole('group', { name: 'Message 1 fields' });
+    expect(within(editor).getByText('Formatting').parentElement).toHaveTextContent('2');
+    expect(within(editor).getByText('Mentions').parentElement).toHaveTextContent('1');
+    expect(within(editor).getByText('Images').parentElement).toHaveTextContent('1');
+    expect(within(editor).getByText('Channel references').parentElement).toHaveTextContent('1');
+    expect(screen.getByRole('article', { name: 'Message 1 preview' })).toHaveClass('mezon-preview-context');
+    expect(within(screen.getByRole('article', { name: 'Message 1 preview' })).getByRole('img')).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: 'Send to Production alerts' })).toBeChecked();
     expect(screen.getByLabelText('Webhook URL for Production alerts')).toBeInTheDocument();
   });
@@ -149,5 +156,46 @@ describe('MezonHook reliable composer', () => {
     expect(within(editor).getByLabelText('Mention identity 1')).toBeInTheDocument();
     expect(within(editor).getByLabelText('Image URL 1')).toBeInTheDocument();
     expect(within(editor).getByLabelText('Channel ID 1')).toBeInTheDocument();
+  });
+
+  it('uses the last selected message text for new rich ranges', async () => {
+    localStorage.setItem('mezonhook:project:v3', JSON.stringify({
+      version: 3,
+      name: 'Selection test',
+      messages: [{ t: 'Select these words now', mk: [], mentions: [], images: [], hg: [] }],
+      targets: [{ id: 'target-1', name: 'Production alerts' }],
+    }));
+    const user = userEvent.setup();
+    render(<App />);
+    const editor = screen.getByRole('group', { name: 'Message 1 fields' });
+    const textarea = within(editor).getByLabelText('Message text') as HTMLTextAreaElement;
+    textarea.focus();
+    textarea.setSelectionRange(7, 18);
+    fireEvent.select(textarea);
+    for (const name of ['Formatting', 'Mentions', 'Channel references']) await user.click(within(editor).getByText(name));
+    for (const name of ['Add formatting', 'Add mention', 'Add channel reference']) await user.click(within(editor).getByRole('button', { name }));
+    expect(within(editor).getByLabelText('Formatting start 1')).toHaveValue(7);
+    expect(within(editor).getByLabelText('Formatting end 1')).toHaveValue(18);
+    expect(within(editor).getByLabelText('Mention start 1')).toHaveValue(7);
+    expect(within(editor).getByLabelText('Mention end 1')).toHaveValue(18);
+    expect(within(editor).getByLabelText('Channel start 1')).toHaveValue(7);
+    expect(within(editor).getByLabelText('Channel end 1')).toHaveValue(18);
+  });
+
+  it('falls back to 0–1 and explains text selection when no range is selected', async () => {
+    localStorage.setItem('mezonhook:project:v3', JSON.stringify({
+      version: 3,
+      name: 'Fallback test',
+      messages: [{ t: 'No selection', mk: [], mentions: [], images: [], hg: [] }],
+      targets: [{ id: 'target-1', name: 'Production alerts' }],
+    }));
+    const user = userEvent.setup();
+    render(<App />);
+    const editor = screen.getByRole('group', { name: 'Message 1 fields' });
+    await user.click(within(editor).getByText('Formatting'));
+    await user.click(within(editor).getByRole('button', { name: 'Add formatting' }));
+    expect(within(editor).getByLabelText('Formatting start 1')).toHaveValue(0);
+    expect(within(editor).getByLabelText('Formatting end 1')).toHaveValue(1);
+    expect(within(editor).getByText(/Select text in Message text before choosing Add/)).toBeInTheDocument();
   });
 });

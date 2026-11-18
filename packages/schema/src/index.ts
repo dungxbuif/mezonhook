@@ -637,7 +637,12 @@ export function createChannelWebhookMessage(text = 'Deployment completed success
 }
 
 function createChannelWebhookDemoMessage(): ChannelWebhookMessage {
-  const t = 'Deployment v1.4.2 completed successfully.\n@ops-team please verify #production-alerts.';
+  const t = [
+    '🚀 Release v2.4.0 is live in production.',
+    'Runbook: https://mezonhook.dungxbuif.com/',
+    '@demo-ops please verify API health and report in #demo-production-alerts.',
+    'Screenshot attached for visual verification.',
+  ].join('\n');
   const range = (value: string) => {
     const s = t.indexOf(value);
     return { s, e: s + value.length };
@@ -645,10 +650,20 @@ function createChannelWebhookDemoMessage(): ChannelWebhookMessage {
 
   return {
     t,
-    mk: [{ type: 'pre', ...range('v1.4.2') }],
-    mentions: [{ username: 'ops-team', ...range('@ops-team') }],
-    images: [],
-    hg: [{ channelId: 'production-alerts', ...range('#production-alerts') }],
+    mk: [
+      { type: 'pre', ...range('v2.4.0') },
+      { type: 'lk', ...range('https://mezonhook.dungxbuif.com/') },
+    ],
+    mentions: [{ username: 'demo-ops', ...range('@demo-ops') }],
+    images: [{
+      fn: 'thumbnail_dog1.jpg',
+      sz: 5_620,
+      url: 'https://cdn.mezon.vn/0/1843962578301095936/1829065039080853500/95_0thumbnail_dog1.jpg',
+      ft: 'image/jpeg',
+      w: 275,
+      h: 183,
+    }],
+    hg: [{ channelId: 'demo-production-alerts', ...range('#demo-production-alerts') }],
   };
 }
 
