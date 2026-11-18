@@ -67,11 +67,17 @@ export async function sendWebhookBatch(
   }
   if (urls.some((url) => !validateWebhookUrl(url))) throw new Error('Enter valid Mezon Channel Webhook URLs.');
   let deliveries = 0;
+  const total = urls.length * messages.length;
   for (const message of messages) {
     const envelope = toChannelWebhookEnvelope(message);
     for (const url of urls) {
-      await sendChannelWebhookPayload(url, envelope, fetcher);
-      deliveries += 1;
+      try {
+        await sendChannelWebhookPayload(url, envelope, fetcher);
+        deliveries += 1;
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : 'Mezon rejected the delivery.';
+        throw new Error(`Stopped after ${deliveries} of ${total} deliveries. ${reason}`);
+      }
     }
   }
   return deliveries;

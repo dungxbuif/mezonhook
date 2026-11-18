@@ -37,6 +37,18 @@ describe('Mezon Channel Webhooks', () => {
     ]);
   });
 
+  it('reports completed deliveries when an ordered batch stops on failure', async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(new Response('', { status: 403 }));
+
+    await expect(sendWebhookBatch(
+      ['https://webhook.mezon.ai/webhooks/a/token'],
+      [createChannelWebhookMessage('First'), createChannelWebhookMessage('Second')],
+      fetcher,
+    )).rejects.toThrow('Stopped after 1 of 2 deliveries');
+  });
+
   it('accepts only the documented credential-free HTTPS webhook path', () => {
     expect(validateWebhookUrl('https://webhook.mezon.ai/webhooks/channel/token')).toBe(true);
     expect(validateWebhookUrl('http://webhook.mezon.ai/webhooks/channel/token')).toBe(false);
