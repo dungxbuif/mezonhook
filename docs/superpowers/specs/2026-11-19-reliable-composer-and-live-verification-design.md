@@ -32,7 +32,7 @@ MezonHook must let a user compose, inspect, copy, and deliver the same message w
 
 ## Chosen approach
 
-Replace the legacy Discord-like draft in the active UI with a version 3 webhook project schema. Keep legacy schema types only as an import boundary. A focused message editor manages the five documented fields, a focused preview renders only observable webhook output, and an advanced workbench owns raw JSON plus generated samples. Valid raw JSON replaces the selected message immediately; invalid JSON remains editable, preserves the last valid message, explains the error, and disables both send actions.
+Replace the legacy Discord-like draft in the active UI with a version 3 webhook project schema. Keep legacy schema types only as an import boundary. A focused message editor manages the five documented fields, a focused preview renders only observable webhook output, and an advanced workbench owns raw JSON plus generated samples. Valid raw JSON replaces the selected message immediately; invalid JSON remains editable, preserves the last valid message, explains the error, and disables the single send action.
 
 Alternatives rejected:
 
@@ -42,12 +42,12 @@ Alternatives rejected:
 
 ## UX structure
 
-- Header: product name, import/export, one Send button reflecting the real form state.
+- Header: product mark, global theme, and import/export. The theme stays visible because it affects the entire workspace.
 - Desktop: 60% composer and 40% sticky preview.
-- Mobile: Compose and Preview tabs, followed by a sticky delivery summary; no horizontal scrolling.
-- Composer: message navigation, text first, optional formatting/mention/image/channel-reference groups, and visible reorder controls.
+- Mobile: Compose and Preview tabs with no horizontal scrolling.
+- Composer: text first; collapsed optional formatting/mention/image/channel-reference groups; visible reorder controls.
 - Advanced: raw JSON, cURL, Bot SDK sample, validation status, and copied feedback.
-- Delivery: selected targets, masked URLs, and one submit path.
+- Delivery: selected targets, masked URLs, and the only submit path.
 
 ## Protocol model
 

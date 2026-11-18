@@ -1,33 +1,65 @@
 # Using MezonHook
 
-MezonHook creates a webhook project in your browser: an ordered sequence of rich messages and named delivery targets. It previews the sequence in a Mezon-inspired layout and does not store webhook URLs in a project or exported file.
+MezonHook builds an ordered Channel Webhook project in your browser. The visual form is the source of truth; the preview, raw envelope, generated samples, storage, export, and delivery update from that same data.
 
-## Create and copy a Channel Webhook
+## 1. Create a Channel Webhook
 
-In Mezon, open the target channel, use **Edit Channel**, then open the **Integrations** tab. Choose **New Webhook**, optionally set the webhook bot name and avatar, and use **Copy Webhook URL**. You need to be a member of a clan and have access to that channel. These steps and the endpoint format are defined in the [official Vietnamese Channel Webhook documentation](https://mezon.ai/docs/vi/developer/webhooks/channel-webhook/).
+In Mezon, open the target channel, open its settings and integrations, create a Channel Webhook, and copy its URL. The endpoint follows this form:
 
-Treat the copied URL as a password. Do not paste it into source code, a ticket, a chat message, a screenshot, or an exported template.
+```text
+https://webhook.mezon.ai/webhooks/{channelId}/{token}
+```
 
-## Build, preview, and send a project
+Treat the URL as a password. Do not paste it into source code, tickets, screenshots, exported projects, or chat.
 
-1. Open your local MezonHook instance or deployment.
-2. Choose Announcement, Release note, or Event invitation to begin with a template.
-3. Edit the body, card details, fields, and actions. Review the Mezon-style preview as you work.
-4. Add, duplicate, delete, or reorder messages in the message rail. The preview shows the complete send order.
-5. Open **Config**, name targets, paste each URL into its password-masked field, and select the targets to receive the project. URLs stay only in current session memory.
-6. Use **Export project** to download JSON, or **Import project** to load a project. Exports contain content and target names only—not webhook URLs.
-7. Select **Send project**. Delivery stops on the first failure, so earlier messages may already have arrived; fix the error and resend only the messages you intend to repeat.
-8. Open **Help** in the app for this workflow and official Mezon docs.
+## 2. Compose messages
+
+1. Enter the message text.
+2. Open only the optional groups you need:
+   - **Formatting** for `pre` or link ranges.
+   - **Mentions** for a username or user ID plus its text range.
+   - **Images** for hosted HTTPS image metadata.
+   - **Channel references** for a channel ID plus its text range.
+3. Use **Add message**, **Duplicate**, and the arrow buttons to create the exact delivery order.
+4. Review the right-hand preview. On mobile, switch between **Compose** and **Preview** tabs.
+
+Every range is zero-based, start-inclusive, and end-exclusive. For example, selecting the first four characters uses `s: 0` and `e: 4`.
+
+## 3. Inspect JSON or generated code
+
+Open **Advanced JSON and code**. The JSON is the exact `{ type: "hook", message }` envelope for the selected message.
+
+- Valid edits update the visual form and preview.
+- Invalid edits preserve the last valid message, show the validation error, and disable Send.
+- The cURL sample uses the current webhook URL only while it is present in memory.
+- The JavaScript sample reads bot credentials only from environment variables and sends the same text, formatting, mentions, channel references, and attachments.
+
+Bot-only embeds, buttons, inputs, selects, radio controls, and date pickers are not Channel Webhook fields. They require an authenticated bot process and are tracked separately in the [live verification matrix](LIVE-VERIFICATION.md).
+
+## 4. Choose appearance and deliver
+
+The **Theme** selector is in the top bar because it affects the whole workspace. Import and Export are next to it.
+
+In **Delivery**:
+
+1. Name each target.
+2. Paste its webhook URL into the password-masked field.
+3. Select the targets that should receive the sequence.
+4. Use the single **Send N messages** button.
+
+MezonHook sends messages in project order to each selected target. Delivery stops at the first failed request and reports how many deliveries completed, so do not blindly resend a partially delivered project.
+
+After a successful send, target URLs are cleared from memory. Project exports contain messages and target names, never webhook URLs.
 
 ## CORS and network troubleshooting
 
-MezonHook sends directly from your browser to `https://webhook.mezon.ai/webhooks/{channelId}/{token}`. A static host cannot work around browser CORS policy. If the send fails:
+If a browser delivery fails:
 
-- Confirm the URL was copied from the intended Mezon channel and has not been revoked.
-- Check browser developer tools for CORS or network errors.
-- Confirm that your network, browser privacy extensions, VPN, proxy, or firewall permits the request.
-- Try again only after resolving the origin/CORS or connectivity issue; do not share the URL in a support request.
+- Confirm the URL belongs to the intended channel and has not been revoked.
+- Check developer tools for a CORS or network error.
+- Confirm browser extensions, VPN, proxy, firewall, and DNS permit the request.
+- Resolve the cause before resending to avoid duplicate messages.
 
 ## If a URL leaks
 
-Immediately revoke or rotate the Channel Webhook in Mezon by replacing it through the channel's Integrations settings. Use the new URL only in the current MezonHook session. Do not post either the old or new URL anywhere public—even after rotation. If the exposure points to a MezonHook vulnerability, report it through a GitHub private security advisory as described in [SECURITY.md](../SECURITY.md).
+Revoke or rotate it immediately from the channel integrations settings. Do not share either the old or replacement URL. Report a suspected MezonHook vulnerability through the private process in [SECURITY.md](../SECURITY.md).

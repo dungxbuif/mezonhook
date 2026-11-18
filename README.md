@@ -1,21 +1,29 @@
 # MezonHook
 
-MezonHook is a browser-based, Discohook-inspired workspace for building and previewing ordered Mezon Channel Webhook message projects. It is a static Vite/React application; it does not provide a hosted service, server API, or dashboard.
+MezonHook is a focused browser editor for composing and sending ordered Mezon Channel Webhook messages. The form, preview, raw JSON, generated cURL, generated Bot SDK sample, saved project, and actual delivery all use the same validated message model.
 
-Start from one of three built-in templates—Announcement, Release note, or Event invitation—then edit the message body, embed-style card, fields, and actions. The preview follows the public Mezon message and interactive-component sources: [Message](https://github.com/mezonai/mezon-js/blob/master/packages/mezon-sdk/src/mezon-client/structures/Message.ts), [interactive-message guide](https://mezon.ai/docs/vi/developer/mezon-topics/interactive-message/), and [Channel Webhook guide](https://mezon.ai/docs/vi/developer/webhooks/channel-webhook/).
+Try the live deployment at [mezonhook.dungxbuif.com](https://mezonhook.dungxbuif.com).
 
-Projects support up to 20 messages and 10 named webhook targets. They are saved locally and can be exported/imported as JSON. MezonHook sends every project message in order to each selected target. Try the live deployment at [mezonhook.dungxbuif.com](https://mezonhook.dungxbuif.com).
+## What it supports
 
-```
-https://webhook.mezon.ai/webhooks/{channelId}/{token}
-```
+The Channel Webhook editor exposes only fields verified against a real Mezon channel:
 
-Webhook URLs are treated as credentials: MezonHook keeps them only in session memory. They are never included in local projects or JSON exports.
+- `t`: message text
+- `mk`: preformatted and link ranges
+- `mentions`: username or user-ID ranges
+- `images`: hosted HTTPS image metadata
+- `hg`: channel-reference ranges
+
+Bot-only embeds and interactive components are intentionally not mixed into the webhook form. The Advanced section generates a runnable JavaScript Bot SDK sample for the same standard message. See the [live verification matrix](docs/LIVE-VERIFICATION.md) for evidence and limits.
+
+Projects support up to 20 ordered messages and 10 named webhook targets. Projects persist locally and can be imported or exported as JSON. Webhook URLs remain password-masked in memory and are cleared after a successful send; they are never written into local storage or project exports.
 
 ## Prerequisites
 
-- Node.js 20 or later
+- Node.js 20, 21, 22, or 23
 - npm
+
+Node.js 24 is not currently supported by the Mezon SDK development dependency used by the live bot verifier.
 
 ## Run locally
 
@@ -26,23 +34,36 @@ npm run build --workspace @mezonhook/web
 npm run dev --workspace @mezonhook/web
 ```
 
-The web application is in `apps/web`; run the last command from the repository root and open the local Vite address it prints.
+Open the local Vite URL. Use **Compose** for the normal workflow, switch to **Preview** on narrow screens, and open **Advanced JSON and code** only when protocol-level inspection is needed.
+
+## Live verification
+
+Dry-run the complete case catalog without credentials:
+
+```bash
+npm run verify:live -- --mode=dry-run
+```
+
+Credentialed runs are restricted by the script to channel `2096923994367201280`. Bot credentials are read from environment variables; webhook URLs must never be committed or printed. Setup and evidence are documented in [docs/LIVE-VERIFICATION.md](docs/LIVE-VERIFICATION.md).
 
 ## Repository layout
 
-```
-apps/web/        Vite + React editor and preview
-packages/schema/ Shared draft validation and Mezon payload conversion
-docs/            User and deployment documentation
+```text
+apps/web/        Vite + React editor, preview, and generated samples
+packages/schema/ Strict Channel Webhook project schema and validation
+scripts/         Reproducible live-verification harness
+docs/            Usage, evidence, architecture, and deployment notes
 ```
 
 ## Security and browser delivery
 
-The browser sends the webhook request directly to Mezon. A static host cannot bypass browser CORS enforcement: delivery requires Mezon to permit the host origin and a working client network connection. Do not put a webhook URL in source code, environment files, exported JSON, screenshots, tests, issues, or logs. See [the usage guide](docs/USAGE.md), [deployment guide](docs/DEPLOYMENT.md), and [security policy](SECURITY.md).
+The browser posts directly to Mezon. A static host cannot bypass browser CORS enforcement, so delivery requires Mezon to permit the host origin and a working client network connection. Treat this URL as a credential:
 
-## Contributing
+```text
+https://webhook.mezon.ai/webhooks/{channelId}/{token}
+```
 
-Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+Never put a webhook URL or bot token in source, exported JSON, screenshots, issues, logs, or chat. See the [usage guide](docs/USAGE.md), [deployment guide](docs/DEPLOYMENT.md), and [security policy](SECURITY.md).
 
 ## License
 
