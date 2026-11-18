@@ -1,5 +1,5 @@
 import type { ChannelWebhookMessage } from '@mezonhook/schema';
-import type { ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { ChannelMessageEditor } from './ChannelMessageEditor';
 import { MessagePreview } from './MessagePreview';
 
@@ -18,6 +18,27 @@ type Props = {
 };
 
 export function ProjectEditor({ messages, activeTab, secondary, onTabChange, onMessageChange, onAddMessage, onDuplicateMessage, onRemoveMessage, onMoveMessage }: Props) {
+  const previewRef = useRef<HTMLElement>(null);
+  const [previewOversized, setPreviewOversized] = useState(false);
+
+  useLayoutEffect(() => {
+    const preview = previewRef.current;
+    if (!preview) return;
+
+    const updatePreviewPosition = () => {
+      setPreviewOversized(preview.scrollHeight > window.innerHeight - 56);
+    };
+
+    updatePreviewPosition();
+    window.addEventListener('resize', updatePreviewPosition);
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(updatePreviewPosition);
+    observer?.observe(preview);
+    return () => {
+      window.removeEventListener('resize', updatePreviewPosition);
+      observer?.disconnect();
+    };
+  }, []);
+
   return <div className="builder-workspace" data-testid="project-editor">
     <div className="builder-mobile-tabs" role="tablist" aria-label="Builder panes">
       <button type="button" role="tab" aria-selected={activeTab === 'editor'} className={activeTab === 'editor' ? 'mobile-pane-tab mobile-pane-tab--active' : 'mobile-pane-tab'} onClick={() => onTabChange('editor')}>Compose</button>
@@ -30,7 +51,7 @@ export function ProjectEditor({ messages, activeTab, secondary, onTabChange, onM
         <button type="button" className="add-message-wide" onClick={onAddMessage} disabled={messages.length >= 20}>Add message</button>
         {secondary}
       </div></section>
-      <section className="preview-pane" aria-labelledby="preview-title"><div className="pane-scroll"><header className="pane-heading"><p className="eyebrow">Live preview</p><h2 id="preview-title">Delivery order</h2><p>{messages.length} {messages.length === 1 ? 'message' : 'messages'} will be sent in this order.</p></header><div className="sequence-preview">{messages.map((message, index) => <MessagePreview key={`preview-${index}`} message={message} index={index} />)}</div></div></section>
+      <section ref={previewRef} className={previewOversized ? 'preview-pane preview-pane--oversized' : 'preview-pane'} aria-labelledby="preview-title"><div className="pane-scroll"><header className="pane-heading"><p className="eyebrow">Live preview</p><h2 id="preview-title">Delivery order</h2><p>{messages.length} {messages.length === 1 ? 'message' : 'messages'} will be sent in this order.</p></header><div className="sequence-preview">{messages.map((message, index) => <MessagePreview key={`preview-${index}`} message={message} index={index} />)}</div></div></section>
     </div>
   </div>;
 }

@@ -53,7 +53,7 @@ Alternatives rejected:
 
 The production audit at 1920×1080, 1440×900, and 375×812 found no horizontal document overflow, but the desktop workspace felt broken because `100vh`/`overflow: hidden` on the shell forced a second vertical scrollbar inside the editor. The fixed-height split also left the preview mostly empty while pushing Delivery below the editor viewport.
 
-The approved correction keeps the 60/40 comparison layout but lets the document scroll naturally. The top bar and preview stay sticky on desktop, the editor grows with its content, and Delivery remains in the normal reading flow. Below 1000px the existing Compose/Preview tabs remain, with sticky behavior removed so each active pane follows normal document flow.
+The approved correction keeps the 60/40 comparison layout but lets the document scroll naturally. The top bar stays sticky. A desktop preview stays sticky only while its full content fits below the header; an oversized preview falls back to normal document flow instead of being pinned while taller than the available viewport or creating a nested scrollbar. The editor grows with its content, and Delivery remains in the normal reading flow. Below 1000px the existing Compose/Preview tabs remain, with sticky behavior removed so each active pane follows normal document flow.
 
 Fresh projects use task-oriented examples: message text `Deployment completed successfully.` and target name `Production alerts`. Stored and imported projects keep their own values; changing defaults must not overwrite local project data.
 

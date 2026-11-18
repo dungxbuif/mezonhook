@@ -36,7 +36,7 @@ npm run build --workspace @mezonhook/web
 npm run dev --workspace @mezonhook/web
 ```
 
-Open the local Vite URL. On desktop, the page scrolls normally while the right-hand preview stays visible below the sticky header. On narrow screens, use the **Compose** and **Preview** tabs. Open **Advanced JSON and code** only when protocol-level inspection is needed.
+Open the local Vite URL. On desktop, the page scrolls normally while a preview that fits the viewport stays visible below the sticky header; a very long preview follows normal page flow instead of creating a second scrollbar. On narrow screens, use the **Compose** and **Preview** tabs. Open **Advanced JSON and code** only when protocol-level inspection is needed.
 
 ## Live verification
 

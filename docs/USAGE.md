@@ -23,7 +23,7 @@ A fresh project begins with `Deployment completed successfully.` so the preview 
    - **Images** for hosted HTTPS image metadata.
    - **Channel references** for a channel ID plus its text range.
 3. Use **Add message**, **Duplicate**, and the arrow buttons to create the exact delivery order.
-4. Review the right-hand preview. On desktop it stays below the header while the page scrolls; the composer, Advanced section, and Delivery remain in one natural document flow. On mobile and tablet, switch between **Compose** and **Preview** tabs.
+4. Review the right-hand preview. On desktop it stays below the header while it fits the viewport; a very long preview returns to normal page flow so you can read it through the page scroll instead of a nested pane scrollbar. The composer, Advanced section, and Delivery remain in one natural document flow. On mobile and tablet, switch between **Compose** and **Preview** tabs.
 
 Every range is zero-based, start-inclusive, and end-exclusive. For example, selecting the first four characters uses `s: 0` and `e: 4`.
 

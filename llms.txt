@@ -29,7 +29,7 @@ Ranges are zero-based, start-inclusive, end-exclusive, and must remain inside `t
 ## Important boundaries
 
 - Fresh projects use message text `Deployment completed successfully.` and target name `Production alerts`; stored and imported values are preserved.
-- Desktop uses natural document scrolling with a sticky preview below the header. Layouts at or below 1000px use Compose/Preview tabs and normal pane flow.
+- Desktop uses natural document scrolling. A preview is sticky below the header only while its full content fits the remaining viewport; oversized previews use normal flow without nested scrolling. Layouts at or below 1000px use Compose/Preview tabs and normal pane flow.
 - Webhook URLs are memory-only secrets and are excluded from storage and exports.
 - The active webhook UI does not claim support for bot-only embeds or interactive components.
 - The generated Bot SDK sample maps content, mentions, and attachments to the three `channel.send` arguments.
