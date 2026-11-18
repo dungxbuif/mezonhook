@@ -10,7 +10,7 @@ test('accepts the authorized Mezon webhook channel', () => {
 
 test('rejects a different webhook channel without exposing its token', () => {
   assert.throws(
-    () => assertAuthorizedWebhookUrl('https://webhook.mezon.ai/webhooks/1111111111111111111/private-token', channelId),
+    () => assertAuthorizedWebhookUrl('https://webhook.mezon.ai/webhooks/1111111111111111111/test-token', channelId),
     new RegExp(`authorized channel ${channelId}`),
   );
 });
