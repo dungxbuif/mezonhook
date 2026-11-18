@@ -1,4 +1,5 @@
 import type { ChannelWebhookMessage } from '@mezonhook/schema';
+import { useRef, type SyntheticEvent } from 'react';
 
 type Props = {
   message: ChannelWebhookMessage;
@@ -16,8 +17,17 @@ type Props = {
 const number = (value: string) => Number.isFinite(Number(value)) ? Number(value) : 0;
 
 export function ChannelMessageEditor({ message, index, canRemove, canMoveUp, canMoveDown, onChange, onDuplicate, onRemove, onMoveUp, onMoveDown }: Props) {
+  const lastSelection = useRef<{ s: number; e: number } | null>(null);
   const update = <K extends keyof ChannelWebhookMessage>(key: K, value: ChannelWebhookMessage[K]) => onChange({ ...message, [key]: value });
   const initialEnd = Math.min(1, message.t.length);
+  const rememberSelection = (event: SyntheticEvent<HTMLTextAreaElement>) => {
+    const { selectionStart: s, selectionEnd: e } = event.currentTarget;
+    if (s < e) lastSelection.current = { s, e };
+  };
+  const newRange = () => {
+    const selected = lastSelection.current;
+    return selected && selected.s < selected.e && selected.e <= message.t.length ? selected : { s: 0, e: initialEnd };
+  };
   return <article className="message-card" aria-labelledby={`message-${index}-title`}>
     <header className="message-card__header">
       <div><p className="eyebrow">Message {index + 1}</p><h2 id={`message-${index}-title`}>{message.t.slice(0, 48) || 'Empty message'}</h2></div>
@@ -29,12 +39,12 @@ export function ChannelMessageEditor({ message, index, canRemove, canMoveUp, can
       </div>
     </header>
     <fieldset className="message-fields" aria-label={`Message ${index + 1} fields`}>
-      <label className="full-width"><span>Message text</span><textarea value={message.t} rows={5} maxLength={2000} onChange={(event) => update('t', event.target.value)} /></label>
-      <p className="field-help">Ranges use zero-based start-inclusive/end-exclusive indexes in this text.</p>
+      <label className="full-width"><span>Message text</span><textarea value={message.t} rows={5} maxLength={2000} onSelect={rememberSelection} onKeyUp={rememberSelection} onMouseUp={rememberSelection} onChange={(event) => update('t', event.target.value)} /></label>
+      <p className="field-help">Select text in Message text before choosing Add to prefill its range. Without a selection, the range starts at 0–1. Indexes are zero-based, start-inclusive, and end-exclusive. Demo user and channel IDs are illustrative.</p>
 
       <details className="field-collection">
         <summary><span>Formatting</span><span className="collection-count">{message.mk.length}</span></summary>
-        <div className="collection-body"><div className="collection-heading"><p>Preformatted and link ranges</p><button type="button" className="secondary-button" disabled={message.t.length === 0} onClick={() => update('mk', [...message.mk, { type: 'pre', s: 0, e: initialEnd }])}>Add formatting</button></div>
+        <div className="collection-body"><div className="collection-heading"><p>Preformatted and link ranges</p><button type="button" className="secondary-button" disabled={message.t.length === 0} onClick={() => update('mk', [...message.mk, { type: 'pre', ...newRange() }])}>Add formatting</button></div>
         {message.mk.map((entry, item) => <div className="collection-row" key={`mk-${item}`}>
           <label><span>Type</span><select aria-label={`Formatting type ${item + 1}`} value={entry.type} onChange={(event) => update('mk', message.mk.map((current, position) => position === item ? { ...current, type: event.target.value as 'pre' | 'lk' } : current))}><option value="pre">Preformatted</option><option value="lk">Link</option></select></label>
           <label><span>Start</span><input aria-label={`Formatting start ${item + 1}`} inputMode="numeric" type="number" min="0" value={entry.s} onChange={(event) => update('mk', message.mk.map((current, position) => position === item ? { ...current, s: number(event.target.value) } : current))} /></label>
@@ -46,7 +56,7 @@ export function ChannelMessageEditor({ message, index, canRemove, canMoveUp, can
 
       <details className="field-collection">
         <summary><span>Mentions</span><span className="collection-count">{message.mentions.length}</span></summary>
-        <div className="collection-body"><div className="collection-heading"><p>Reference a user range</p><button type="button" className="secondary-button" disabled={message.t.length === 0} onClick={() => update('mentions', [...message.mentions, { user_id: '', s: 0, e: initialEnd }])}>Add mention</button></div>
+        <div className="collection-body"><div className="collection-heading"><p>Reference a user range</p><button type="button" className="secondary-button" disabled={message.t.length === 0} onClick={() => update('mentions', [...message.mentions, { user_id: '', ...newRange() }])}>Add mention</button></div>
         {message.mentions.map((entry, item) => {
           const mode = entry.username !== undefined ? 'username' : 'user_id';
           const identity = entry.username ?? entry.user_id ?? '';
@@ -73,7 +83,7 @@ export function ChannelMessageEditor({ message, index, canRemove, canMoveUp, can
 
       <details className="field-collection">
         <summary><span>Channel references</span><span className="collection-count">{message.hg.length}</span></summary>
-        <div className="collection-body"><div className="collection-heading"><p>Reference a Mezon channel range</p><button type="button" className="secondary-button" disabled={message.t.length === 0} onClick={() => update('hg', [...message.hg, { channelId: '', s: 0, e: initialEnd }])}>Add channel reference</button></div>
+        <div className="collection-body"><div className="collection-heading"><p>Reference a Mezon channel range</p><button type="button" className="secondary-button" disabled={message.t.length === 0} onClick={() => update('hg', [...message.hg, { channelId: '', ...newRange() }])}>Add channel reference</button></div>
         {message.hg.map((entry, item) => <div className="collection-row" key={`hg-${item}`}>
           <label><span>Channel ID</span><input aria-label={`Channel ID ${item + 1}`} value={entry.channelId} onChange={(event) => update('hg', message.hg.map((current, position) => position === item ? { ...current, channelId: event.target.value } : current))} /></label>
           <RangeInputs prefix="Channel" item={item} s={entry.s} e={entry.e} onRange={(s, e) => update('hg', message.hg.map((current, position) => position === item ? { ...current, s, e } : current))} />

@@ -1,17 +1,20 @@
 import {
   cloneChannelWebhookMessage,
   createChannelWebhookMessage,
-  createChannelWebhookProject,
   validateChannelWebhookProject,
+  validateProject,
   type ChannelWebhookMessage,
   type ChannelWebhookProject,
+  type WebhookProject,
 } from '@mezonhook/schema';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { DeliveryConfig, type AppearanceTheme } from './components/DeliveryConfig';
+import { BotProjectEditor } from './components/BotProjectEditor';
 import { HelpPanel } from './components/HelpPanel';
 import { PayloadWorkbench } from './components/PayloadWorkbench';
 import { ProjectEditor } from './components/ProjectEditor';
-import { importProjectJson, readStoredProject, saveProject } from './project-storage';
+import { importComposerProject, readComposerState, saveBotProject, saveComposerMode } from './composer-storage';
+import { saveProject } from './project-storage';
 import { parseChannelWebhookEnvelope, sendWebhookBatch } from './webhook';
 
 const MAX_MESSAGES = 20;
@@ -23,12 +26,14 @@ type BuilderTab = 'editor' | 'preview';
 type DeliveryStatus = { kind: 'success' | 'error'; message: string } | null;
 
 const envelopeText = (message: ChannelWebhookMessage) => JSON.stringify({ type: 'hook', message }, null, 2);
-const initialProject = () => { const stored = readStoredProject(); return stored.ok ? stored.project : createChannelWebhookProject(); };
 const readAppearance = (): AppearanceTheme => { const saved = localStorage.getItem(APPEARANCE_STORAGE_KEY); return themes.includes(saved as AppearanceTheme) ? saved as AppearanceTheme : 'dark'; };
 const readFileText = (file: File) => new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.addEventListener('load', () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Could not read file.'))); reader.addEventListener('error', () => reject(new Error('Could not read file.'))); reader.readAsText(file); });
 
 export default function App() {
-  const [project, setProject] = useState<ChannelWebhookProject>(initialProject);
+  const [initialComposerState] = useState(readComposerState);
+  const [mode, setMode] = useState(initialComposerState.mode);
+  const [project, setProject] = useState<ChannelWebhookProject>(initialComposerState.webhook);
+  const [botProject, setBotProject] = useState<WebhookProject>(initialComposerState.bot);
   const [builderTab, setBuilderTab] = useState<BuilderTab>('editor');
   const [appearance, setAppearance] = useState<AppearanceTheme>(readAppearance);
   const [targetUrls, setTargetUrls] = useState<Record<string, string>>({});
@@ -36,11 +41,21 @@ export default function App() {
   const [activeMessageIndex, setActiveMessageIndex] = useState(0);
   const [payloadText, setPayloadText] = useState(() => envelopeText(project.messages[0]));
   const [payloadError, setPayloadError] = useState<string | null>(null);
-  const [projectError, setProjectError] = useState('');
+  const [projectError, setProjectError] = useState(initialComposerState.errors.join(' '));
   const [deliveryStatus, setDeliveryStatus] = useState<DeliveryStatus>(null);
   const [sending, setSending] = useState(false);
 
-  useEffect(() => { saveProject(project); }, [project]);
+  const initialWebhookProject = useRef(project);
+  const initialBotProject = useRef(botProject);
+  useEffect(() => {
+    if (project === initialWebhookProject.current) return;
+    saveProject(project);
+  }, [project]);
+  useEffect(() => {
+    if (botProject === initialBotProject.current) return;
+    saveBotProject(botProject);
+  }, [botProject]);
+  useEffect(() => { saveComposerMode(mode); }, [mode]);
   useEffect(() => { document.documentElement.dataset.theme = appearance; localStorage.setItem(APPEARANCE_STORAGE_KEY, appearance); }, [appearance]);
 
   const syncActivePayload = (nextProject: ChannelWebhookProject, index = activeMessageIndex) => {
@@ -80,15 +95,24 @@ export default function App() {
   const importProject = async (file?: File) => {
     if (!file) return;
     try {
-      const result = importProjectJson(await readFileText(file));
+      const result = importComposerProject(await readFileText(file));
       if (!result.ok) { setProjectError(`Unable to import project: ${result.error}`); return; }
-      setProject(result.project); setSelectedTargetIds(result.project.targets[0] ? [result.project.targets[0].id] : []); setTargetUrls({}); setProjectError(''); syncActivePayload(result.project, 0);
+      setMode(result.mode);
+      setBuilderTab('editor');
+      setProjectError('');
+      if (result.mode === 'bot') {
+        setBotProject(result.project);
+        return;
+      }
+      const webhookProject = result.project;
+      setProject(webhookProject); setSelectedTargetIds(webhookProject.targets[0] ? [webhookProject.targets[0].id] : []); setTargetUrls({}); syncActivePayload(webhookProject, 0);
     } catch { setProjectError('Unable to import project: The selected file could not be read.'); }
   };
   const exportProject = () => {
-    const validation = validateChannelWebhookProject(project);
+    const activeProject = mode === 'bot' ? botProject : project;
+    const validation = mode === 'bot' ? validateProject(activeProject) : validateChannelWebhookProject(activeProject);
     if (!validation.valid) { setProjectError(`Unable to export project: ${validation.errors.join(' ')}`); return; }
-    const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' }); const href = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = href; link.download = 'mezonhook-project.json'; link.click(); URL.revokeObjectURL(href);
+    const blob = new Blob([JSON.stringify(activeProject, null, 2)], { type: 'application/json' }); const href = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = href; link.download = mode === 'bot' ? 'mezonhook-bot-project.json' : 'mezonhook-webhook-project.json'; link.click(); URL.revokeObjectURL(href);
   };
   const sendProject = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault(); setDeliveryStatus(null);
@@ -119,8 +143,10 @@ export default function App() {
 
   return <main className="workspace-shell">
     <a className="skip-link" href="#composer">Skip to composer</a>
-    <header className="channel-topbar"><div className="topbar-brand"><span className="topbar-logo" aria-hidden="true">M</span><span className="topbar-project">MezonHook</span></div><div className="topbar-actions"><label className="topbar-theme"><span className="visually-hidden">Theme</span><select aria-label="Appearance theme" value={appearance} onChange={(event) => setAppearance(event.target.value as AppearanceTheme)}>{themes.map((theme) => <option value={theme} key={theme}>{themeLabels[theme]}</option>)}</select></label><label className="topbar-button" htmlFor="project-import"><span aria-hidden="true">Import</span><span className="visually-hidden"> project</span></label><input id="project-import" className="visually-hidden" type="file" accept="application/json,.json" onChange={(event) => { void importProject(event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} /><button type="button" className="topbar-button" aria-label="Export project" onClick={exportProject}>Export</button></div></header>
+    <header className="channel-topbar"><div className="topbar-leading"><div className="topbar-brand"><span className="topbar-logo" aria-hidden="true">M</span><span className="topbar-project">MezonHook</span></div><div className="composer-mode-switch" role="tablist" aria-label="Composer mode"><button type="button" role="tab" aria-selected={mode === 'webhook'} className={mode === 'webhook' ? 'composer-mode-tab composer-mode-tab--active' : 'composer-mode-tab'} onClick={() => { setMode('webhook'); setBuilderTab('editor'); }}>Channel Webhook</button><button type="button" role="tab" aria-selected={mode === 'bot'} className={mode === 'bot' ? 'composer-mode-tab composer-mode-tab--active' : 'composer-mode-tab'} onClick={() => { setMode('bot'); setBuilderTab('editor'); }}>Bot SDK</button></div></div><div className="topbar-actions"><label className="topbar-theme"><span className="visually-hidden">Theme</span><select aria-label="Appearance theme" value={appearance} onChange={(event) => setAppearance(event.target.value as AppearanceTheme)}>{themes.map((theme) => <option value={theme} key={theme}>{themeLabels[theme]}</option>)}</select></label><label className="topbar-button" htmlFor="project-import"><span aria-hidden="true">Import</span><span className="visually-hidden"> project</span></label><input id="project-import" className="visually-hidden" type="file" accept="application/json,.json" onChange={(event) => { void importProject(event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} /><button type="button" className="topbar-button" aria-label="Export project" onClick={exportProject}>Export</button></div></header>
     {projectError && <p className="form-alert global-alert" role="alert">{projectError}</p>}
-    <ProjectEditor messages={project.messages} activeTab={builderTab} secondary={secondary} onTabChange={setBuilderTab} onMessageChange={updateMessage} onAddMessage={addMessage} onDuplicateMessage={duplicateMessage} onRemoveMessage={removeMessage} onMoveMessage={moveMessage} />
+    {mode === 'webhook'
+      ? <ProjectEditor messages={project.messages} activeTab={builderTab} secondary={secondary} onTabChange={setBuilderTab} onMessageChange={updateMessage} onAddMessage={addMessage} onDuplicateMessage={duplicateMessage} onRemoveMessage={removeMessage} onMoveMessage={moveMessage} />
+      : <BotProjectEditor project={botProject} activeTab={builderTab} onTabChange={setBuilderTab} onChange={setBotProject} />}
   </main>;
 }

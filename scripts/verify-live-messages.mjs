@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { makeCodeSamples } from '../apps/web/src/code-samples.ts';
+import { makeBotProjectSample } from '../apps/web/src/bot-code-samples.ts';
+import { createAnnouncementDraft, createWebhookProject } from '../packages/schema/src/index.ts';
 import { assertAuthorizedWebhookUrl } from './live-verification-policy.mjs';
 
 const TEST_CHANNEL_ID = '2096923994367201280';
@@ -60,16 +62,7 @@ async function verifyWebhook() {
   }
 }
 
-async function runExactGeneratedBotSample() {
-  requireEnv('MEZON_BOT_ID', 'MEZON_BOT_TOKEN', 'MEZON_CHANNEL_ID');
-  const text = `${marker} generated sample @audit-bot #verification`;
-  const envelope = { type: 'hook', message: message(text, {
-    mk: [{ type: 'pre', ...range(text, 'generated sample') }],
-    mentions: [{ user_id: process.env.MEZON_BOT_ID, ...range(text, '@audit-bot') }],
-    images: [IMAGE],
-    hg: [{ channelId: TEST_CHANNEL_ID, ...range(text, '#verification') }],
-  }) };
-  const sample = makeCodeSamples(envelope).bot;
+async function runGeneratedBotSample(format, sample) {
   const directory = await mkdtemp(join(process.cwd(), '.mezonhook-sample-'));
   const filename = join(directory, 'generated-bot-sample.mjs');
   try {
@@ -79,8 +72,53 @@ async function runExactGeneratedBotSample() {
     });
     if (execution.error) throw new Error(`${execution.error.message}; sample stdout: ${execution.stdout.trim() || '(none)'}`);
     if (execution.status !== 0) throw new Error(`Generated sample failed with exit ${execution.status}: ${execution.stderr.trim()}`);
-    record('bot', 'generated-web-sample', 'accepted', 'Exact generated JavaScript exited 0');
+    record('bot', format, 'accepted', 'Generated JavaScript exited 0');
   } finally { await rm(directory, { recursive: true, force: true }); }
+}
+
+async function runExactGeneratedBotSample() {
+  requireEnv('MEZON_BOT_ID', 'MEZON_BOT_TOKEN', 'MEZON_CHANNEL_ID');
+  const text = `${marker} generated sample @audit-bot #verification`;
+  const envelope = { type: 'hook', message: message(text, {
+    mk: [{ type: 'pre', ...range(text, 'generated sample') }],
+    mentions: [{ user_id: process.env.MEZON_BOT_ID, ...range(text, '@audit-bot') }],
+    images: [IMAGE],
+    hg: [{ channelId: TEST_CHANNEL_ID, ...range(text, '#verification') }],
+  }) };
+  await runGeneratedBotSample('generated-web-sample', makeCodeSamples(envelope).bot);
+}
+
+function fullBotProject() {
+  const project = createWebhookProject();
+  project.name = `${marker} full Bot SDK project`;
+  const release = createAnnouncementDraft();
+  release.body = `${marker} release approval requested`;
+  release.card.title = 'Release approval';
+  release.card.description = 'Every supported Bot SDK component is generated from this project.';
+  release.card.image = IMAGE.url;
+  release.card.fields = [
+    { name: 'Status', value: 'Ready for review', inline: true },
+    { name: 'Approval note', value: 'Explain the decision', inline: false, inputs: { id: `${marker}-input`, type: 3, component: { id: `${marker}-input-control`, placeholder: 'Reason', defaultValue: 'Approved after smoke test', type: 'text', textarea: true } } },
+    { name: 'Environment', value: 'Choose the target', inline: false, inputs: { id: `${marker}-select`, type: 2, component: { options: [{ label: 'Staging', value: 'staging' }, { label: 'Production', value: 'production' }], valueSelected: 'production' } } },
+    { name: 'Decision', value: 'Select one', inline: false, inputs: { id: `${marker}-radio`, type: 5, component: [{ label: 'Approve', value: 'approve', description: 'Ship the release', style: 3 }, { label: 'Hold', value: 'hold', description: 'Needs changes', style: 4 }], max_options: 1 } },
+  ];
+  release.buttons = [{ id: `${marker}-approve`, label: 'Approve release', style: 3 }];
+
+  const schedule = createAnnouncementDraft();
+  schedule.body = `${marker} schedule and animation sample`;
+  schedule.card.title = 'Follow-up schedule';
+  schedule.card.fields = [
+    { name: 'Deployment date', value: 'Pick a date', inline: false, inputs: { id: `${marker}-date`, type: 4, component: {} } },
+    { name: 'Animation payload', value: 'SDK payload shape only', inline: false, inputs: { id: `${marker}-animation`, type: 6, component: { url_image: IMAGE.url, url_position: IMAGE.url, pool: ['audit'], repeat: 1, duration: 500 } } },
+  ];
+  schedule.buttons = [];
+  project.messages = [release, schedule];
+  return project;
+}
+
+async function runFullGeneratedBotProject() {
+  requireEnv('MEZON_BOT_ID', 'MEZON_BOT_TOKEN', 'MEZON_CHANNEL_ID');
+  await runGeneratedBotSample('generated-full-project', makeBotProjectSample(fullBotProject()));
 }
 
 async function verifyBotOnlyFormats() {
@@ -113,9 +151,9 @@ if (process.env.MEZON_WEBHOOK_URL) assertAuthorizedWebhookUrl(process.env.MEZON_
 
 if (mode === 'dry-run') {
   for (const [format] of webhookCases()) record('webhook', format, 'planned');
-  for (const format of ['generated-web-sample', 'embed', 'buttons', 'input', 'select', 'radio', 'date-picker', 'animation']) record('bot', format, 'planned');
+  for (const format of ['generated-web-sample', 'generated-full-project', 'embed', 'buttons', 'input', 'select', 'radio', 'date-picker', 'animation']) record('bot', format, 'planned');
 } else {
   if (mode === 'webhook' || mode === 'all') await verifyWebhook();
-  if (mode === 'bot' || mode === 'all') { await runExactGeneratedBotSample(); await verifyBotOnlyFormats(); }
+  if (mode === 'bot' || mode === 'all') { await runExactGeneratedBotSample(); await runFullGeneratedBotProject(); await verifyBotOnlyFormats(); }
 }
 

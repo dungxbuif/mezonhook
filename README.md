@@ -1,10 +1,17 @@
 # MezonHook
 
-MezonHook is a focused browser editor for composing and sending ordered Mezon Channel Webhook messages. The form, preview, raw JSON, generated cURL, generated Bot SDK sample, saved project, and actual delivery all use the same validated message model.
+MezonHook is a browser composer with two intentionally separate modes: **Channel Webhook** for direct delivery and **Bot SDK** for generating a complete authenticated JavaScript sender. Each mode keeps its own draft and uses one validated model for its form, preview, JSON/code, storage, and export.
 
 Try the live deployment at [mezonhook.dungxbuif.com](https://mezonhook.dungxbuif.com).
 
-## What it supports
+## Two composer modes
+
+- **Channel Webhook (v3)** — compose ordered text messages with formatting, mentions, images, and channel references; inspect JSON/cURL; then send to named webhook targets.
+- **Bot SDK (v2)** — compose ordered messages with embeds, fields, buttons, inputs, selects, radio choices, date pickers, and animation payloads; then copy the generated JavaScript. Interactive controls still need event handlers in your bot process.
+
+The mode tabs are at the start of the workspace. Switching modes does not discard either draft. Imports route by project version and switch to the matching mode; exports contain only the active mode.
+
+## Channel Webhook support
 
 The Channel Webhook editor exposes only fields verified against a real Mezon channel:
 
@@ -14,11 +21,11 @@ The Channel Webhook editor exposes only fields verified against a real Mezon cha
 - `images`: hosted HTTPS image metadata
 - `hg`: channel-reference ranges
 
-Bot-only embeds and interactive components are intentionally not mixed into the webhook form. The Advanced section generates a runnable JavaScript Bot SDK sample for the same standard message. See the [live verification matrix](docs/LIVE-VERIFICATION.md) for evidence and limits.
+Bot-only embeds and interactive components are intentionally not mixed into the webhook form. See the [live verification matrix](docs/LIVE-VERIFICATION.md) for evidence and limits.
 
 Projects support up to 20 ordered messages and 10 named webhook targets. Projects persist locally and can be imported or exported as JSON. Webhook URLs remain password-masked in memory and are cleared after a successful send; they are never written into local storage or project exports.
 
-A fresh project starts with the editable example `Deployment completed successfully.` and the target name `Production alerts`. Existing saved and imported projects retain their own content and target names.
+A fresh webhook project opens with a meaningful rich demo containing preformatted text, a link, an illustrative bot mention, an illustrative channel reference, and a hosted image. It is editable and is never sent automatically. The mention/channel IDs are examples and must be replaced before delivery. Existing saved and imported projects retain their own content and target names.
 
 ## Prerequisites
 
@@ -36,7 +43,9 @@ npm run build --workspace @mezonhook/web
 npm run dev --workspace @mezonhook/web
 ```
 
-Open the local Vite URL. On desktop, the page scrolls normally while a preview that fits the viewport stays visible below the sticky header; a very long preview follows normal page flow instead of creating a second scrollbar. On narrow screens, use the **Compose** and **Preview** tabs. Open **Advanced JSON and code** only when protocol-level inspection is needed.
+Open the local Vite URL. The preview is shown inside a scoped Mezon-like conversation surface so text ranges, mentions, channel references, code, links, embeds, components, and images have realistic visual context. On desktop, a preview that fits stays visible below the sticky header; a very long preview follows normal page flow instead of creating a second scrollbar. On narrow screens, use **Compose** and **Preview**. Open advanced JSON/code only when protocol-level inspection is needed.
+
+Bot code reads `MEZON_BOT_ID`, `MEZON_BOT_TOKEN`, and `MEZON_CHANNEL_ID` from the environment. If browser clipboard access is blocked, the app reports the failure and asks you to select and copy the visible sample manually; it never reports a false success.
 
 ## Live verification
 
@@ -51,8 +60,8 @@ Credentialed runs are restricted by the script to channel `2096923994367201280`.
 ## Repository layout
 
 ```text
-apps/web/        Vite + React editor, preview, and generated samples
-packages/schema/ Strict Channel Webhook project schema and validation
+apps/web/        Vite + React dual-mode editor, previews, and generated samples
+packages/schema/ Strict v2 Bot and v3 Channel Webhook schemas and validation
 scripts/         Reproducible live-verification harness
 docs/            Usage, evidence, architecture, and deployment notes
 ```

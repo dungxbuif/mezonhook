@@ -1,4 +1,4 @@
-import { useState, type DragEvent, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { MessageButtonStyle, MessageDraft, MessageField, MessageFieldInputs, RadioFieldOption, SelectFieldOption } from '@mezonhook/schema';
 
 const MAX_FIELDS = 25;
@@ -30,13 +30,13 @@ function createInteractiveField(type: InteractiveType, ordinal: number): Message
 }
 
 type MessageEditorProps = {
-  draft: MessageDraft; index: number; canDuplicate: boolean; canRemove: boolean; dragging: boolean;
+  draft: MessageDraft; index: number; canDuplicate: boolean; canRemove: boolean; canMoveUp: boolean; canMoveDown: boolean;
   onChange: (update: (current: MessageDraft) => MessageDraft) => void;
   onDuplicate: () => void; onRemove: () => void;
-  onDragStart: (event: DragEvent<HTMLElement>) => void; onDragOver: (event: DragEvent<HTMLElement>) => void; onDrop: (event: DragEvent<HTMLElement>) => void; onDragEnd: () => void;
+  onMoveUp: () => void; onMoveDown: () => void;
 };
 
-export function MessageEditor({ draft, index, canDuplicate, canRemove, dragging, onChange, onDuplicate, onRemove, onDragStart, onDragOver, onDrop, onDragEnd }: MessageEditorProps) {
+export function MessageEditor({ draft, index, canDuplicate, canRemove, canMoveUp, canMoveDown, onChange, onDuplicate, onRemove, onMoveUp, onMoveDown }: MessageEditorProps) {
   const [open, setOpen] = useState<Record<SectionName, boolean>>({ content: true, embeds: false, fields: false, components: false, advanced: false });
   const toggle = (section: SectionName) => setOpen((current) => ({ ...current, [section]: !current[section] }));
   const card = (property: keyof MessageDraft['card'], value: string) => onChange((current) => ({ ...current, card: { ...current.card, [property]: value } }));
@@ -82,10 +82,10 @@ export function MessageEditor({ draft, index, canDuplicate, canRemove, dragging,
     </div>;
   };
 
-  return <article className={`message-editor-card bg-theme-primary border-theme-primary ${dragging ? 'message-editor-card--dragging' : ''}`} data-testid={`message-editor-${index + 1}`}>
-    <header className="message-editor-header bg-theme-direct-message border-b-theme-primary" draggable onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop} onDragEnd={onDragEnd}>
+  return <article className="message-editor-card" data-testid={`message-editor-${index + 1}`}>
+    <header className="message-editor-header">
       <div><p className="message-editor-kicker">Message {index + 1}</p><h2>{draft.card.title || 'Untitled message'}</h2></div>
-      <div className="message-editor-actions"><button type="button" className="secondary-button" onClick={onDuplicate} disabled={!canDuplicate} aria-label={`Duplicate message ${index + 1}`}>Duplicate</button><button type="button" className="remove-button" onClick={onRemove} disabled={!canRemove} aria-label={`Remove message ${index + 1}`}>Remove</button></div>
+      <div className="message-editor-actions"><button type="button" className="secondary-button" onClick={onMoveUp} disabled={!canMoveUp} aria-label={`Move bot message ${index + 1} up`}>↑</button><button type="button" className="secondary-button" onClick={onMoveDown} disabled={!canMoveDown} aria-label={`Move bot message ${index + 1} down`}>↓</button><button type="button" className="secondary-button" onClick={onDuplicate} disabled={!canDuplicate} aria-label={`Duplicate bot message ${index + 1}`}>Duplicate</button><button type="button" className="remove-button" onClick={onRemove} disabled={!canRemove} aria-label={`Remove bot message ${index + 1}`}>Remove</button></div>
     </header>
     <div className="composer-accordion">
       {section('content', 'Content', <label className="full-width"><span>Body</span><textarea className="bg-theme-input-primary border-theme-primary" value={draft.body} onChange={(event) => onChange((current) => ({ ...current, body: event.target.value }))} rows={4} /></label>)}
