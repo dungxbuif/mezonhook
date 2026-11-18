@@ -24,28 +24,38 @@ docker run --rm -p 8080:8080 mezonhook:local
 
 Open `http://localhost:8080`. The runtime is an unprivileged nginx Alpine image and serves only the built `apps/web/dist` assets.
 
-The maintained demo is available at [https://mezonhook.dungxbuif.com](https://mezonhook.dungxbuif.com). Its reverse proxy routes HTTPS traffic to the Docker container; deploy a rebuilt image after `npm test` and the web production build succeed.
+The maintained demo is available at [https://mezonhook.dungxbuif.com](https://mezonhook.dungxbuif.com). Its reverse proxy routes HTTPS traffic to the Docker container. The health probe requests `GET /` on port 8080.
 
 ## Homelab CI/CD
 
-The local enrollment gate passed on 2026-11-01:
+Branch and merge request pipelines build the `linux/amd64` Docker image and
+start it without network access. The HTTP smoke check requests
+`http://127.0.0.1:8080/` inside the container. The Docker build runs TypeScript
+checking and compiles the Vite site.
 
-```bash
-npm test
-npm run build --workspace @mezonhook/web
-```
+For a production release, the owner creates one protected `prod-<semver>`
+tag on the current GitLab `main`. The pipeline checks that the tagged commit
+is reachable from `main` and uses the `ci-build` runner for the image build
+and smoke check. It publishes the image to the lab registry, then records the
+immutable digest in the MezonHook production manifest and stack catalog on
+`homelab-ops/main`. The promotion creates the internal
+`mezonhook-prod-<semver>` receipt tag for the ops pipeline.
 
-The lab release flow uses a `prod-<semver>` application tag. The Mac runner
-validates the workspaces, builds `linux/amd64`, publishes one immutable registry
-digest, and updates only the MezonHook manifest/catalog in `homelab-ops`. That
-promotion creates `mezonhook-prod-<semver>`; the protected VM100 runner then
-updates the `mezonhook` Swarm service with rollback-on-failure and verifies the
-public HTTPS route. The app pipeline does not SSH to VM100 or receive its Docker
-socket. This app has no migration or runtime secret gate.
+The protected VM100 runner validates the receipt, updates the `mezonhook`
+Swarm service with rollback on failure, and checks
+`https://mezonhook.dungxbuif.com/`. The app uses `/` for both readiness and
+liveness, serves static assets, and requires no database migration or runtime
+environment variables.
 
-The current GitLab checkout is still on `codex/mvp-webhook-builder`; no
-production tag is valid until the declared release branch is created or the
-current branch is explicitly integrated into it.
+The source build uses `LAB_REGISTRY_HOST`, `LAB_REGISTRY_PUSH_USER`, and
+`LAB_REGISTRY_PUSH_PASSWORD`. Promotion uses `HOMELAB_OPS_PUSH_USER` and
+`HOMELAB_OPS_PUSH_TOKEN`. Before tagging, confirm runner assignment, the
+protected tag patterns `prod-*` and `*-prod-*`, and that the promotion token
+is masked and protected.
+
+Verify a change to this flow by building the image for `linux/amd64`,
+starting it with `--network none`, checking the root document and a generated
+asset, and checking the CI rules and the promotion script syntax.
 
 ## Sending to Mezon and CORS
 

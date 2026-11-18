@@ -2,6 +2,7 @@
 set -eu
 
 : "${HOMELAB_OPS_PUSH_TOKEN:?HOMELAB_OPS_PUSH_TOKEN is required}"
+: "${HOMELAB_OPS_PUSH_USER:?HOMELAB_OPS_PUSH_USER is required}"
 : "${CI_COMMIT_TAG:?CI_COMMIT_TAG is required}"
 : "${CI_COMMIT_SHA:?CI_COMMIT_SHA is required}"
 : "${RELEASE_IMAGE:?RELEASE_IMAGE is required}"
@@ -31,7 +32,7 @@ export GIT_TERMINAL_PROMPT=0
 export GIT_CONFIG_COUNT=2
 export GIT_CONFIG_KEY_0=credential.helper GIT_CONFIG_VALUE_0=
 export GIT_CONFIG_KEY_1=credential.helper
-export GIT_CONFIG_VALUE_1='!f() { if [ "$1" = get ]; then printf "username=oauth2\npassword=%s\n" "$HOMELAB_OPS_PUSH_TOKEN"; fi; }; f'
+export GIT_CONFIG_VALUE_1='!f() { if [ "$1" = get ]; then printf "username=%s\npassword=%s\n" "$HOMELAB_OPS_PUSH_USER" "$HOMELAB_OPS_PUSH_TOKEN"; fi; }; f'
 
 git clone --no-tags --depth 1 --branch main "${ops_server%/}/homelab/homelab-ops.git" "$ops_dir/ops"
 cd "$ops_dir/ops"
