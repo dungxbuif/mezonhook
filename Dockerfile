@@ -1,4 +1,4 @@
-FROM node:20-alpine AS build
+FROM node:20-bookworm-slim AS build
 
 ARG TARGETARCH
 
@@ -13,7 +13,7 @@ RUN npm ci \
       arm64) rollup_arch=arm64 ;; \
       *) echo "Unsupported Docker target architecture: ${TARGETARCH}" >&2; exit 1 ;; \
     esac \
-    && npm install --no-save --package-lock=false "@rollup/rollup-linux-${rollup_arch}-musl@4.63.1"
+    && npm install --no-save --package-lock=false "@rollup/rollup-linux-${rollup_arch}-gnu@4.63.1"
 
 COPY . .
 RUN npm run build --workspace @mezonhook/web

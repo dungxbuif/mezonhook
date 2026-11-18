@@ -30,8 +30,11 @@ The maintained demo is available at [https://mezonhook.dungxbuif.com](https://me
 
 Branch and merge request pipelines build the `linux/amd64` Docker image and
 start it without network access. The HTTP smoke check requests
-`http://127.0.0.1:8080/` inside the container. The Docker build runs TypeScript
-checking and compiles the Vite site.
+`http://127.0.0.1:8080/` inside the container. The Node Bookworm builder runs
+TypeScript checking and compiles the Vite site with the glibc Rollup package.
+The build uses Bookworm because npm registry lookups through Alpine's musl
+resolver failed on the Mac runner's rootless Docker service. The final image
+continues to serve the compiled files with unprivileged nginx.
 
 For a production release, the owner creates one protected `prod-<semver>`
 tag on the current GitLab `main`. The pipeline checks that the tagged commit
