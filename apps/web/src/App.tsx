@@ -9,6 +9,7 @@ import {
 } from '@mezonhook/schema';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { DeliveryConfig, type AppearanceTheme } from './components/DeliveryConfig';
+import { BotProjectEditor } from './components/BotProjectEditor';
 import { HelpPanel } from './components/HelpPanel';
 import { PayloadWorkbench } from './components/PayloadWorkbench';
 import { ProjectEditor } from './components/ProjectEditor';
@@ -97,12 +98,13 @@ export default function App() {
       const result = importComposerProject(await readFileText(file));
       if (!result.ok) { setProjectError(`Unable to import project: ${result.error}`); return; }
       setMode(result.mode);
+      setBuilderTab('editor');
       setProjectError('');
       if (result.mode === 'bot') {
-        setBotProject(result.project as WebhookProject);
+        setBotProject(result.project);
         return;
       }
-      const webhookProject = result.project as ChannelWebhookProject;
+      const webhookProject = result.project;
       setProject(webhookProject); setSelectedTargetIds(webhookProject.targets[0] ? [webhookProject.targets[0].id] : []); setTargetUrls({}); syncActivePayload(webhookProject, 0);
     } catch { setProjectError('Unable to import project: The selected file could not be read.'); }
   };
@@ -141,8 +143,10 @@ export default function App() {
 
   return <main className="workspace-shell">
     <a className="skip-link" href="#composer">Skip to composer</a>
-    <header className="channel-topbar"><div className="topbar-brand"><span className="topbar-logo" aria-hidden="true">M</span><span className="topbar-project">MezonHook</span></div><div className="topbar-actions"><label className="topbar-theme"><span className="visually-hidden">Theme</span><select aria-label="Appearance theme" value={appearance} onChange={(event) => setAppearance(event.target.value as AppearanceTheme)}>{themes.map((theme) => <option value={theme} key={theme}>{themeLabels[theme]}</option>)}</select></label><label className="topbar-button" htmlFor="project-import"><span aria-hidden="true">Import</span><span className="visually-hidden"> project</span></label><input id="project-import" className="visually-hidden" type="file" accept="application/json,.json" onChange={(event) => { void importProject(event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} /><button type="button" className="topbar-button" aria-label="Export project" onClick={exportProject}>Export</button></div></header>
+    <header className="channel-topbar"><div className="topbar-leading"><div className="topbar-brand"><span className="topbar-logo" aria-hidden="true">M</span><span className="topbar-project">MezonHook</span></div><div className="composer-mode-switch" role="tablist" aria-label="Composer mode"><button type="button" role="tab" aria-selected={mode === 'webhook'} className={mode === 'webhook' ? 'composer-mode-tab composer-mode-tab--active' : 'composer-mode-tab'} onClick={() => { setMode('webhook'); setBuilderTab('editor'); }}>Channel Webhook</button><button type="button" role="tab" aria-selected={mode === 'bot'} className={mode === 'bot' ? 'composer-mode-tab composer-mode-tab--active' : 'composer-mode-tab'} onClick={() => { setMode('bot'); setBuilderTab('editor'); }}>Bot SDK</button></div></div><div className="topbar-actions"><label className="topbar-theme"><span className="visually-hidden">Theme</span><select aria-label="Appearance theme" value={appearance} onChange={(event) => setAppearance(event.target.value as AppearanceTheme)}>{themes.map((theme) => <option value={theme} key={theme}>{themeLabels[theme]}</option>)}</select></label><label className="topbar-button" htmlFor="project-import"><span aria-hidden="true">Import</span><span className="visually-hidden"> project</span></label><input id="project-import" className="visually-hidden" type="file" accept="application/json,.json" onChange={(event) => { void importProject(event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} /><button type="button" className="topbar-button" aria-label="Export project" onClick={exportProject}>Export</button></div></header>
     {projectError && <p className="form-alert global-alert" role="alert">{projectError}</p>}
-    <ProjectEditor messages={project.messages} activeTab={builderTab} secondary={secondary} onTabChange={setBuilderTab} onMessageChange={updateMessage} onAddMessage={addMessage} onDuplicateMessage={duplicateMessage} onRemoveMessage={removeMessage} onMoveMessage={moveMessage} />
+    {mode === 'webhook'
+      ? <ProjectEditor messages={project.messages} activeTab={builderTab} secondary={secondary} onTabChange={setBuilderTab} onMessageChange={updateMessage} onAddMessage={addMessage} onDuplicateMessage={duplicateMessage} onRemoveMessage={removeMessage} onMoveMessage={moveMessage} />
+      : <BotProjectEditor project={botProject} activeTab={builderTab} onTabChange={setBuilderTab} onChange={setBotProject} />}
   </main>;
 }

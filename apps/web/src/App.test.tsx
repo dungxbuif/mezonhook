@@ -13,6 +13,12 @@ afterEach(() => {
 });
 
 describe('MezonHook reliable composer', () => {
+  it('shows explicit Channel Webhook and Bot SDK modes with webhook selected by default', () => {
+    render(<App />);
+    expect(screen.getByRole('tab', { name: 'Channel Webhook' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Bot SDK' })).toHaveAttribute('aria-selected', 'false');
+  });
+
   it('uses the visual form as the source for preview and raw JSON', async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -132,6 +138,8 @@ describe('MezonHook reliable composer', () => {
     await waitFor(() => expect(localStorage.getItem('mezonhook:bot-project:v2')).toContain('Unsupported card'));
     expect(localStorage.getItem('mezonhook:bot-project:v2')).toContain('Unsupported button');
     expect(localStorage.getItem('mezonhook:composer-mode')).toBe('bot');
+    expect(screen.getByRole('tab', { name: 'Bot SDK' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getAllByRole('heading', { name: 'Unsupported card' })).toHaveLength(2);
   });
 
   it('keeps secondary protocol tooling in progressive disclosure', () => {
@@ -197,5 +205,75 @@ describe('MezonHook reliable composer', () => {
     expect(within(editor).getByLabelText('Formatting start 1')).toHaveValue(0);
     expect(within(editor).getByLabelText('Formatting end 1')).toHaveValue(1);
     expect(within(editor).getByText(/Select text in Message text before choosing Add/)).toBeInTheDocument();
+  });
+
+  it('restores every Bot SDK editor and keeps interactive state while switching modes', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('tab', { name: 'Bot SDK' }));
+    for (const name of ['Content', 'Embeds', 'Fields', 'Components', 'Advanced']) {
+      expect(screen.getByRole('button', { name })).toBeInTheDocument();
+    }
+    await user.click(screen.getByRole('button', { name: 'Fields' }));
+    for (const name of ['Add Input', 'Add Select', 'Add Radio', 'Add Date picker', 'Add Animation']) {
+      await user.click(screen.getByRole('button', { name }));
+    }
+    await user.clear(screen.getByLabelText('Input placeholder'));
+    await user.type(screen.getByLabelText('Input placeholder'), 'Explain the deployment risk');
+    for (const type of [3, 2, 5, 4, 6]) expect(screen.getByTestId(`interactive-preview-${type}`)).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Channel Webhook' }));
+    await user.click(screen.getByRole('tab', { name: 'Bot SDK' }));
+    await user.click(screen.getByRole('button', { name: 'Fields' }));
+    expect(screen.getByLabelText('Input placeholder')).toHaveValue('Explain the deployment risk');
+  });
+
+  it('routes v2 and v3 imports to their matching visible modes', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const bot = {
+      version: 2,
+      name: 'Imported bot',
+      messages: [{ body: 'Bot body', card: { color: '#5865F2', title: 'Bot title', description: 'Bot card', author: '', thumbnail: '', image: '', fields: [] }, buttons: [] }],
+      targets: [{ id: 'target-1', name: 'Bot target' }],
+    };
+    await user.upload(screen.getByLabelText('Import project'), new File([JSON.stringify(bot)], 'bot.json', { type: 'application/json' }));
+    expect(await screen.findByDisplayValue('Imported bot')).toBeInTheDocument();
+    const webhook = {
+      version: 3,
+      name: 'Imported webhook',
+      messages: [{ t: 'Webhook body', mk: [], mentions: [], images: [], hg: [] }],
+      targets: [{ id: 'target-1', name: 'Imported webhook target' }],
+    };
+    await user.upload(screen.getByLabelText('Import project'), new File([JSON.stringify(webhook)], 'webhook.json', { type: 'application/json' }));
+    expect(await screen.findByLabelText('Message text')).toHaveValue('Webhook body');
+    expect(screen.getByRole('tab', { name: 'Channel Webhook' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('exports the active mode with a mode-specific filename', async () => {
+    const user = userEvent.setup();
+    const downloads: string[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) { downloads.push(this.download); });
+    const BrowserURL = URL;
+    class TestURL extends BrowserURL {
+      static createObjectURL = vi.fn(() => 'blob:project');
+      static revokeObjectURL = vi.fn();
+    }
+    vi.stubGlobal('URL', TestURL);
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Export project' }));
+    await user.click(screen.getByRole('tab', { name: 'Bot SDK' }));
+    await user.click(screen.getByRole('button', { name: 'Export project' }));
+    expect(downloads).toEqual(['mezonhook-webhook-project.json', 'mezonhook-bot-project.json']);
+  });
+
+  it('keeps delivery out of Bot SDK mode and generates the complete project sender', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('tab', { name: 'Bot SDK' }));
+    expect(screen.queryByLabelText(/Webhook URL/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Send \d/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Add message' }));
+    expect(screen.getByText('Generated Bot SDK JavaScript').closest('section')).toHaveTextContent('await channel.send');
+    expect(screen.getByText(/does not register click or submission handlers/i)).toBeInTheDocument();
   });
 });
