@@ -86,11 +86,15 @@ describe('MezonHook reliable composer', () => {
   it('sends every project message in order through one real submit path', async () => {
     const user = userEvent.setup();
     const fetcher = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 204 }));
+    localStorage.setItem('mezonhook:project:v3', JSON.stringify({
+      version: 3,
+      name: 'Delivery test',
+      messages: [{ t: 'First', mk: [], mentions: [], images: [], hg: [] }],
+      targets: [{ id: 'target-1', name: 'Production alerts' }],
+    }));
     render(<App />);
     await user.click(screen.getByRole('button', { name: 'Add message' }));
     const textboxes = screen.getAllByLabelText('Message text');
-    await user.clear(textboxes[0]);
-    await user.type(textboxes[0], 'First');
     await user.clear(textboxes[1]);
     await user.type(textboxes[1], 'Second');
     await user.type(screen.getByLabelText('Webhook URL for Production alerts'), 'https://webhook.mezon.ai/webhooks/123/session-secret');
@@ -105,10 +109,10 @@ describe('MezonHook reliable composer', () => {
     const url = screen.getByLabelText('Webhook URL for Production alerts');
     await user.type(url, 'https://webhook.mezon.ai/webhooks/123/session-secret');
     expect(url).toHaveAttribute('type', 'password');
-    await waitFor(() => expect(localStorage.getItem('mezonhook:project:v3')).not.toContain('session-secret'));
+    await waitFor(() => expect(localStorage.getItem('mezonhook:project:v3') ?? '').not.toContain('session-secret'));
   });
 
-  it('migrates an imported version 2 project without unsupported cards or buttons', async () => {
+  it('routes an imported version 2 project to Bot SDK storage without dropping rich content', async () => {
     const user = userEvent.setup();
     render(<App />);
     const legacy = {
@@ -118,16 +122,17 @@ describe('MezonHook reliable composer', () => {
       targets: [{ id: 'target-1', name: 'Imported channel' }],
     };
     await user.upload(screen.getByLabelText('Import project'), new File([JSON.stringify(legacy)], 'project.json', { type: 'application/json' }));
-    await waitFor(() => expect(screen.getByLabelText('Message text')).toHaveValue('Legacy body'));
-    expect(screen.queryByText('Unsupported card')).not.toBeInTheDocument();
-    expect(screen.queryByText('Unsupported button')).not.toBeInTheDocument();
+    await waitFor(() => expect(localStorage.getItem('mezonhook:bot-project:v2')).toContain('Unsupported card'));
+    expect(localStorage.getItem('mezonhook:bot-project:v2')).toContain('Unsupported button');
+    expect(localStorage.getItem('mezonhook:composer-mode')).toBe('bot');
   });
 
   it('keeps secondary protocol tooling in progressive disclosure', () => {
     render(<App />);
     expect(screen.getByText('Advanced JSON and code').closest('details')).not.toHaveAttribute('open');
+    const editor = screen.getByRole('group', { name: 'Message 1 fields' });
     for (const name of ['Formatting', 'Mentions', 'Images', 'Channel references']) {
-      expect(screen.getByText(name).closest('details')).not.toHaveAttribute('open');
+      expect(within(editor).getByText(name).closest('details')).not.toHaveAttribute('open');
     }
     expect(screen.getByRole('heading', { name: 'Compose webhook messages' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Delivery' })).toBeInTheDocument();

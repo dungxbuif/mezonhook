@@ -1,17 +1,19 @@
 import {
   cloneChannelWebhookMessage,
   createChannelWebhookMessage,
-  createChannelWebhookProject,
   validateChannelWebhookProject,
+  validateProject,
   type ChannelWebhookMessage,
   type ChannelWebhookProject,
+  type WebhookProject,
 } from '@mezonhook/schema';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { DeliveryConfig, type AppearanceTheme } from './components/DeliveryConfig';
 import { HelpPanel } from './components/HelpPanel';
 import { PayloadWorkbench } from './components/PayloadWorkbench';
 import { ProjectEditor } from './components/ProjectEditor';
-import { importProjectJson, readStoredProject, saveProject } from './project-storage';
+import { importComposerProject, readComposerState, saveBotProject, saveComposerMode } from './composer-storage';
+import { saveProject } from './project-storage';
 import { parseChannelWebhookEnvelope, sendWebhookBatch } from './webhook';
 
 const MAX_MESSAGES = 20;
@@ -23,12 +25,14 @@ type BuilderTab = 'editor' | 'preview';
 type DeliveryStatus = { kind: 'success' | 'error'; message: string } | null;
 
 const envelopeText = (message: ChannelWebhookMessage) => JSON.stringify({ type: 'hook', message }, null, 2);
-const initialProject = () => { const stored = readStoredProject(); return stored.ok ? stored.project : createChannelWebhookProject(); };
 const readAppearance = (): AppearanceTheme => { const saved = localStorage.getItem(APPEARANCE_STORAGE_KEY); return themes.includes(saved as AppearanceTheme) ? saved as AppearanceTheme : 'dark'; };
 const readFileText = (file: File) => new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.addEventListener('load', () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Could not read file.'))); reader.addEventListener('error', () => reject(new Error('Could not read file.'))); reader.readAsText(file); });
 
 export default function App() {
-  const [project, setProject] = useState<ChannelWebhookProject>(initialProject);
+  const [initialComposerState] = useState(readComposerState);
+  const [mode, setMode] = useState(initialComposerState.mode);
+  const [project, setProject] = useState<ChannelWebhookProject>(initialComposerState.webhook);
+  const [botProject, setBotProject] = useState<WebhookProject>(initialComposerState.bot);
   const [builderTab, setBuilderTab] = useState<BuilderTab>('editor');
   const [appearance, setAppearance] = useState<AppearanceTheme>(readAppearance);
   const [targetUrls, setTargetUrls] = useState<Record<string, string>>({});
@@ -36,11 +40,21 @@ export default function App() {
   const [activeMessageIndex, setActiveMessageIndex] = useState(0);
   const [payloadText, setPayloadText] = useState(() => envelopeText(project.messages[0]));
   const [payloadError, setPayloadError] = useState<string | null>(null);
-  const [projectError, setProjectError] = useState('');
+  const [projectError, setProjectError] = useState(initialComposerState.errors.join(' '));
   const [deliveryStatus, setDeliveryStatus] = useState<DeliveryStatus>(null);
   const [sending, setSending] = useState(false);
 
-  useEffect(() => { saveProject(project); }, [project]);
+  const skipInitialWebhookSave = useRef(true);
+  const skipInitialBotSave = useRef(true);
+  useEffect(() => {
+    if (skipInitialWebhookSave.current) { skipInitialWebhookSave.current = false; return; }
+    saveProject(project);
+  }, [project]);
+  useEffect(() => {
+    if (skipInitialBotSave.current) { skipInitialBotSave.current = false; return; }
+    saveBotProject(botProject);
+  }, [botProject]);
+  useEffect(() => { saveComposerMode(mode); }, [mode]);
   useEffect(() => { document.documentElement.dataset.theme = appearance; localStorage.setItem(APPEARANCE_STORAGE_KEY, appearance); }, [appearance]);
 
   const syncActivePayload = (nextProject: ChannelWebhookProject, index = activeMessageIndex) => {
@@ -80,15 +94,23 @@ export default function App() {
   const importProject = async (file?: File) => {
     if (!file) return;
     try {
-      const result = importProjectJson(await readFileText(file));
+      const result = importComposerProject(await readFileText(file));
       if (!result.ok) { setProjectError(`Unable to import project: ${result.error}`); return; }
-      setProject(result.project); setSelectedTargetIds(result.project.targets[0] ? [result.project.targets[0].id] : []); setTargetUrls({}); setProjectError(''); syncActivePayload(result.project, 0);
+      setMode(result.mode);
+      setProjectError('');
+      if (result.mode === 'bot') {
+        setBotProject(result.project as WebhookProject);
+        return;
+      }
+      const webhookProject = result.project as ChannelWebhookProject;
+      setProject(webhookProject); setSelectedTargetIds(webhookProject.targets[0] ? [webhookProject.targets[0].id] : []); setTargetUrls({}); syncActivePayload(webhookProject, 0);
     } catch { setProjectError('Unable to import project: The selected file could not be read.'); }
   };
   const exportProject = () => {
-    const validation = validateChannelWebhookProject(project);
+    const activeProject = mode === 'bot' ? botProject : project;
+    const validation = mode === 'bot' ? validateProject(activeProject) : validateChannelWebhookProject(activeProject);
     if (!validation.valid) { setProjectError(`Unable to export project: ${validation.errors.join(' ')}`); return; }
-    const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' }); const href = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = href; link.download = 'mezonhook-project.json'; link.click(); URL.revokeObjectURL(href);
+    const blob = new Blob([JSON.stringify(activeProject, null, 2)], { type: 'application/json' }); const href = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = href; link.download = mode === 'bot' ? 'mezonhook-bot-project.json' : 'mezonhook-webhook-project.json'; link.click(); URL.revokeObjectURL(href);
   };
   const sendProject = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault(); setDeliveryStatus(null);
