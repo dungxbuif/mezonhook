@@ -58,7 +58,8 @@ function recoverLegacyDraft(text: string): ProjectStorageResult<WebhookProject> 
 }
 
 export function importComposerProject(text: string):
-  | { ok: true; mode: ComposerMode; project: ChannelWebhookProject | WebhookProject }
+  | { ok: true; mode: 'webhook'; project: ChannelWebhookProject }
+  | { ok: true; mode: 'bot'; project: WebhookProject }
   | { ok: false; error: string } {
   let value: unknown;
   try { value = JSON.parse(text); }
