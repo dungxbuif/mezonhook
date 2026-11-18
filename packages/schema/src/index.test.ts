@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  createChannelWebhookProject,
   cloneProject,
   createAnnouncementDraft,
   createDraftFromTemplate,
@@ -8,9 +9,68 @@ import {
   messageTemplates,
   normalizeProject,
   toMezonContent,
+  toChannelWebhookEnvelope,
+  validateChannelWebhookMessage,
+  validateChannelWebhookProject,
   validateDraft,
   validateProject,
 } from '@mezonhook/schema';
+
+describe('Channel Webhook v3 schema', () => {
+  const completeMessage = {
+    t: 'Code https://mezon.ai @audit #verify',
+    mk: [
+      { type: 'pre' as const, s: 0, e: 4 },
+      { type: 'lk' as const, s: 5, e: 21 },
+    ],
+    mentions: [{ user_id: 'bot-1', s: 22, e: 28 }],
+    images: [{ fn: 'audit.png', sz: 1234, url: 'https://cdn.mezon.ai/audit.png', ft: 'image/png', w: 320, h: 180 }],
+    hg: [{ channelId: 'channel-1', s: 29, e: 36 }],
+  };
+
+  it('creates a version 3 project with one canonical message and target', () => {
+    expect(createChannelWebhookProject()).toEqual({
+      version: 3,
+      name: 'Untitled webhook project',
+      messages: [{ t: 'Hello from MezonHook!', mk: [], mentions: [], images: [], hg: [] }],
+      targets: [{ id: 'target-1', name: 'Mezon channel' }],
+    });
+  });
+
+  it('accepts and serializes every documented Channel Webhook field', () => {
+    expect(validateChannelWebhookMessage(completeMessage)).toEqual({ valid: true, errors: [] });
+    expect(toChannelWebhookEnvelope(completeMessage)).toEqual({ type: 'hook', message: completeMessage });
+    expect(toChannelWebhookEnvelope(completeMessage).message).not.toBe(completeMessage);
+  });
+
+  it.each([
+    ['unknown message field', { ...completeMessage, unexpected: true }],
+    ['mistyped mk', { ...completeMessage, mk: 'pre' }],
+    ['unsupported markdown type', { ...completeMessage, mk: [{ type: 'bold', s: 0, e: 4 }] }],
+    ['mention with both identities', { ...completeMessage, mentions: [{ username: 'audit', user_id: 'bot-1', s: 22, e: 28 }] }],
+    ['mention without an identity', { ...completeMessage, mentions: [{ s: 22, e: 28 }] }],
+    ['non-HTTPS image', { ...completeMessage, images: [{ ...completeMessage.images[0], url: 'http://cdn.mezon.ai/audit.png' }] }],
+    ['unknown image field', { ...completeMessage, images: [{ ...completeMessage.images[0], secret: 'discard' }] }],
+  ])('rejects %s', (_name, message) => {
+    expect(validateChannelWebhookMessage(message).valid).toBe(false);
+  });
+
+  it.each([
+    ['negative start', { type: 'pre', s: -1, e: 4 }],
+    ['empty range', { type: 'pre', s: 2, e: 2 }],
+    ['range past text', { type: 'pre', s: 0, e: completeMessage.t.length + 1 }],
+    ['fractional range', { type: 'pre', s: 0.5, e: 4 }],
+  ])('rejects %s', (_name, range) => {
+    expect(validateChannelWebhookMessage({ ...completeMessage, mk: [range] }).valid).toBe(false);
+  });
+
+  it('rejects unknown project fields and invalid message bounds', () => {
+    const project = createChannelWebhookProject() as ReturnType<typeof createChannelWebhookProject> & { webhookUrl?: string };
+    project.webhookUrl = 'secret';
+    project.messages = [];
+    expect(validateChannelWebhookProject(project).valid).toBe(false);
+  });
+});
 
 describe('Mezon message schema', () => {
   it('creates a project with one editable message and one target slot', () => {

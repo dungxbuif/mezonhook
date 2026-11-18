@@ -1,35 +1,36 @@
-import { type DragEvent, type ReactNode } from 'react';
-import type { MessageDraft } from '@mezonhook/schema';
-import { MessageEditor } from './MessageEditor';
+import type { ChannelWebhookMessage } from '@mezonhook/schema';
+import type { ReactNode } from 'react';
+import { ChannelMessageEditor } from './ChannelMessageEditor';
 import { MessagePreview } from './MessagePreview';
 
 type BuilderTab = 'editor' | 'preview';
 
-type ProjectEditorProps = {
-  messages: MessageDraft[]; activeTab: BuilderTab; draggingIndex: number | null;
-  guidance: ReactNode;
-  footer: ReactNode;
+type Props = {
+  messages: ChannelWebhookMessage[];
+  activeTab: BuilderTab;
+  secondary: ReactNode;
   onTabChange: (tab: BuilderTab) => void;
-  onMessageChange: (index: number, update: (current: MessageDraft) => MessageDraft) => void;
-  onAddMessage: () => void; onDuplicateMessage: (index: number) => void; onRemoveMessage: (index: number) => void;
-  onDragStart: (index: number, event: DragEvent<HTMLElement>) => void; onDragOver: (event: DragEvent<HTMLElement>) => void; onDrop: (index: number, event: DragEvent<HTMLElement>) => void; onDragEnd: () => void;
+  onMessageChange: (index: number, message: ChannelWebhookMessage) => void;
+  onAddMessage: () => void;
+  onDuplicateMessage: (index: number) => void;
+  onRemoveMessage: (index: number) => void;
+  onMoveMessage: (index: number, direction: -1 | 1) => void;
 };
 
-export function ProjectEditor({ messages, activeTab, draggingIndex, guidance, footer, onTabChange, onMessageChange, onAddMessage, onDuplicateMessage, onRemoveMessage, onDragStart, onDragOver, onDrop, onDragEnd }: ProjectEditorProps) {
-  return <div data-testid="project-editor" data-builder-layout="two-pane-sequence">
-    <div className="builder-mobile-tabs bg-theme-setting-nav border-b-theme-primary" role="tablist" aria-label="Builder panes">
-      <button type="button" role="tab" aria-selected={activeTab === 'editor'} className={activeTab === 'editor' ? 'mobile-pane-tab mobile-pane-tab--active bg-item-msg-selected' : 'mobile-pane-tab bg-item-hover'} onClick={() => onTabChange('editor')}>Editor</button>
-      <button type="button" role="tab" aria-selected={activeTab === 'preview'} className={activeTab === 'preview' ? 'mobile-pane-tab mobile-pane-tab--active bg-item-msg-selected' : 'mobile-pane-tab bg-item-hover'} onClick={() => onTabChange('preview')}>Preview</button>
+export function ProjectEditor({ messages, activeTab, secondary, onTabChange, onMessageChange, onAddMessage, onDuplicateMessage, onRemoveMessage, onMoveMessage }: Props) {
+  return <div className="builder-workspace" data-testid="project-editor">
+    <div className="builder-mobile-tabs" role="tablist" aria-label="Builder panes">
+      <button type="button" role="tab" aria-selected={activeTab === 'editor'} className={activeTab === 'editor' ? 'mobile-pane-tab mobile-pane-tab--active' : 'mobile-pane-tab'} onClick={() => onTabChange('editor')}>Compose</button>
+      <button type="button" role="tab" aria-selected={activeTab === 'preview'} className={activeTab === 'preview' ? 'mobile-pane-tab mobile-pane-tab--active' : 'mobile-pane-tab'} onClick={() => onTabChange('preview')}>Preview</button>
     </div>
-    <div className={`disco-builder disco-builder--${activeTab}`}>
-      <section className="editor-pane bg-theme-primary" aria-label="Message editors"><div className="pane-scroll">
-        <div className="builder-project-heading"><p className="eyebrow">Channel Webhook builder</p></div>
-        {guidance}
-        {messages.map((message, index) => <MessageEditor key={`editor-message-${index}`} draft={message} index={index} dragging={draggingIndex === index} canDuplicate={messages.length < 20} canRemove={messages.length > 1} onChange={(update) => onMessageChange(index, update)} onDuplicate={() => onDuplicateMessage(index)} onRemove={() => onRemoveMessage(index)} onDragStart={(event) => onDragStart(index, event)} onDragOver={onDragOver} onDrop={(event) => onDrop(index, event)} onDragEnd={onDragEnd} />)}
-        <button type="button" className="add-message-wide bg-item-hover border-theme-primary" onClick={onAddMessage} disabled={messages.length >= 20}>Add Message</button>
-        {footer}
+    <div className={`composer-layout composer-layout--${activeTab}`}>
+      <section id="composer" className="editor-pane" aria-labelledby="composer-title"><div className="pane-scroll">
+        <header className="pane-heading"><p className="eyebrow">Channel Webhook</p><h1 id="composer-title">Compose webhook messages</h1><p>Build the documented payload visually. Preview, JSON, samples, and delivery all use this same data.</p></header>
+        <div className="message-stack">{messages.map((message, index) => <ChannelMessageEditor key={`message-${index}`} message={message} index={index} canRemove={messages.length > 1} canMoveUp={index > 0} canMoveDown={index < messages.length - 1} onChange={(next) => onMessageChange(index, next)} onDuplicate={() => onDuplicateMessage(index)} onRemove={() => onRemoveMessage(index)} onMoveUp={() => onMoveMessage(index, -1)} onMoveDown={() => onMoveMessage(index, 1)} />)}</div>
+        <button type="button" className="add-message-wide" onClick={onAddMessage} disabled={messages.length >= 20}>Add message</button>
+        {secondary}
       </div></section>
-      <section className="preview-pane bg-theme-direct-message border-left-theme-primary" aria-labelledby="preview-title"><div className="pane-scroll"><div className="preview-heading"><p className="eyebrow">Sequence preview</p><h2 id="preview-title">Messages send in this order</h2></div><div className="sequence-preview">{messages.map((message, index) => <MessagePreview key={`preview-message-${index}`} draft={message} index={index} />)}</div></div></section>
+      <section className="preview-pane" aria-labelledby="preview-title"><div className="pane-scroll"><header className="pane-heading"><p className="eyebrow">Live preview</p><h2 id="preview-title">Delivery order</h2><p>{messages.length} {messages.length === 1 ? 'message' : 'messages'} will be sent in this order.</p></header><div className="sequence-preview">{messages.map((message, index) => <MessagePreview key={`preview-${index}`} message={message} index={index} />)}</div></div></section>
     </div>
   </div>;
 }
