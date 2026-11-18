@@ -30,6 +30,7 @@ h3 { margin-bottom: 6px; font-size: 15px; }
 .topbar-project { font-size: 15px; font-weight: 750; }
 .topbar-theme select { width: 132px; min-height: 40px; padding: 7px 30px 7px 10px; background: var(--mz-bg-input); font-size: 13px; font-weight: 700; }
 .topbar-button { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; border: 0; border-radius: 8px; padding: 0 12px; color: var(--mz-text-primary); background: transparent; font-size: 13px; font-weight: 700; cursor: pointer; }
+.topbar-button > span { margin-bottom: 0; color: inherit; font-size: inherit; }
 .topbar-button:hover { background: var(--mz-bg-hover); }
 .global-alert { position: fixed; z-index: 20; top: 64px; left: 50%; width: min(680px, calc(100% - 32px)); transform: translateX(-50%); padding: 12px 14px; border: 1px solid var(--mz-danger); border-radius: 8px; background: var(--mz-bg-setting-primary); }
 

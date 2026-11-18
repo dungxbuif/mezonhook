@@ -636,6 +636,22 @@ export function createChannelWebhookMessage(text = 'Deployment completed success
   return { t: text, mk: [], mentions: [], images: [], hg: [] };
 }
 
+function createChannelWebhookDemoMessage(): ChannelWebhookMessage {
+  const t = 'Deployment v1.4.2 completed successfully.\n@ops-team please verify #production-alerts.';
+  const range = (value: string) => {
+    const s = t.indexOf(value);
+    return { s, e: s + value.length };
+  };
+
+  return {
+    t,
+    mk: [{ type: 'pre', ...range('v1.4.2') }],
+    mentions: [{ username: 'ops-team', ...range('@ops-team') }],
+    images: [],
+    hg: [{ channelId: 'production-alerts', ...range('#production-alerts') }],
+  };
+}
+
 export function cloneChannelWebhookMessage(message: ChannelWebhookMessage): ChannelWebhookMessage {
   return {
     t: message.t,
@@ -653,8 +669,8 @@ export function cloneChannelWebhookMessage(message: ChannelWebhookMessage): Chan
 export function createChannelWebhookProject(): ChannelWebhookProject {
   return {
     version: 3,
-    name: 'Untitled webhook project',
-    messages: [createChannelWebhookMessage()],
+    name: 'Production deployment demo',
+    messages: [createChannelWebhookDemoMessage()],
     targets: [{ id: createTargetId(1), name: 'Production alerts' }],
   };
 }

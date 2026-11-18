@@ -40,13 +40,13 @@ describe('MezonHook reliable composer', () => {
     await user.click(screen.getByText('Advanced JSON and code'));
     const raw = screen.getByRole('textbox', { name: 'Live payload' });
     fireEvent.change(raw, { target: { value: '{bad' } });
-    expect(screen.getByLabelText('Message text')).toHaveValue('Deployment completed successfully.');
+    expect(screen.getByLabelText('Message text')).toHaveValue('Deployment v1.4.2 completed successfully.\n@ops-team please verify #production-alerts.');
     for (const button of screen.getAllByRole('button', { name: /Send/ })) expect(button).toBeDisabled();
   });
 
   it('starts a fresh project with task-oriented message and target defaults', () => {
     render(<App />);
-    expect(screen.getByLabelText('Message text')).toHaveValue('Deployment completed successfully.');
+    expect(screen.getByLabelText('Message text')).toHaveValue('Deployment v1.4.2 completed successfully.\n@ops-team please verify #production-alerts.');
     expect(screen.getByRole('checkbox', { name: 'Send to Production alerts' })).toBeChecked();
     expect(screen.getByLabelText('Webhook URL for Production alerts')).toBeInTheDocument();
   });

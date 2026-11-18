@@ -31,8 +31,14 @@ describe('Channel Webhook v3 schema', () => {
   it('creates a version 3 project with one canonical message and target', () => {
     expect(createChannelWebhookProject()).toEqual({
       version: 3,
-      name: 'Untitled webhook project',
-      messages: [{ t: 'Deployment completed successfully.', mk: [], mentions: [], images: [], hg: [] }],
+      name: 'Production deployment demo',
+      messages: [{
+        t: 'Deployment v1.4.2 completed successfully.\n@ops-team please verify #production-alerts.',
+        mk: [{ type: 'pre', s: 11, e: 17 }],
+        mentions: [{ username: 'ops-team', s: 42, e: 51 }],
+        images: [],
+        hg: [{ channelId: 'production-alerts', s: 66, e: 84 }],
+      }],
       targets: [{ id: 'target-1', name: 'Production alerts' }],
     });
   });
