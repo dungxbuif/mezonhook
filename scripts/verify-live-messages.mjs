@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { makeCodeSamples } from '../apps/web/src/code-samples.ts';
+import { assertAuthorizedWebhookUrl } from './live-verification-policy.mjs';
 
 const TEST_CHANNEL_ID = '2096923994367201280';
 const IMAGE = {
@@ -108,6 +109,7 @@ async function verifyBotOnlyFormats() {
 if (process.env.MEZON_CHANNEL_ID && process.env.MEZON_CHANNEL_ID !== TEST_CHANNEL_ID) {
   throw new Error(`Refusing to test outside the authorized channel ${TEST_CHANNEL_ID}.`);
 }
+if (process.env.MEZON_WEBHOOK_URL) assertAuthorizedWebhookUrl(process.env.MEZON_WEBHOOK_URL, TEST_CHANNEL_ID);
 
 if (mode === 'dry-run') {
   for (const [format] of webhookCases()) record('webhook', format, 'planned');

@@ -6,7 +6,7 @@
     "apps/*"
   ],
   "scripts": {
-    "test": "npm test --workspaces",
+    "test": "npm test --workspaces && node --test scripts/*.test.mjs",
     "verify:live": "tsx scripts/verify-live-messages.mjs"
   },
   "engines": {

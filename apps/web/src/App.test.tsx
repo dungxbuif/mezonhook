@@ -44,6 +44,16 @@ describe('MezonHook reliable composer', () => {
     for (const button of screen.getAllByRole('button', { name: /Send/ })) expect(button).toBeDisabled();
   });
 
+  it('explains invalid form content and hides runnable samples', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.clear(screen.getByLabelText('Message text'));
+    await user.click(screen.getByText('Advanced JSON and code'));
+    expect(screen.getByRole('alert')).toHaveTextContent('message.t');
+    expect(screen.queryByText('Runnable samples')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Send 1 message' })).toBeDisabled();
+  });
+
   it('restores and selects the first target from a stored version 3 project', () => {
     localStorage.setItem('mezonhook:project:v3', JSON.stringify({
       version: 3,

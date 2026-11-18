@@ -1,4 +1,4 @@
-import type { ChannelWebhookEnvelope, ChannelWebhookMessage } from '@mezonhook/schema';
+import { validateChannelWebhookMessage, type ChannelWebhookEnvelope, type ChannelWebhookMessage } from '@mezonhook/schema';
 
 export type BotDelivery = {
   content: Pick<ChannelWebhookMessage, 't' | 'mk' | 'hg'>;
@@ -26,6 +26,8 @@ export function toBotDelivery(message: ChannelWebhookMessage): BotDelivery {
 }
 
 export function makeCodeSamples(envelope: ChannelWebhookEnvelope, webhookUrl?: string): { curl: string; bot: string } {
+  const validation = validateChannelWebhookMessage(envelope.message);
+  if (!validation.valid) throw new Error(`Invalid Channel Webhook message: ${validation.errors.join(' ')}`);
   const payload = JSON.stringify(envelope, null, 2);
   const shellPayload = payload.replace(/'/g, "'\\''");
   const target = webhookUrl || 'https://webhook.mezon.ai/webhooks/{channelId}/{token}';

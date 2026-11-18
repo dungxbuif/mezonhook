@@ -46,4 +46,8 @@ describe('executable delivery samples', () => {
     const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor as new (source: string) => (...args: unknown[]) => Promise<unknown>;
     expect(() => new AsyncFunction(body)).not.toThrow();
   });
+
+  it('refuses to generate runnable samples from an invalid message', () => {
+    expect(() => makeCodeSamples({ type: 'hook', message: createChannelWebhookMessage('') })).toThrow(/message\.t/);
+  });
 });
