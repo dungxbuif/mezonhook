@@ -82,7 +82,7 @@ button:focus-visible, summary:focus-visible, .topbar-button:focus-visible { outl
 .remove-button:hover:not(:disabled) { background: color-mix(in srgb, var(--mz-danger) 10%, transparent); }
 .primary-button { color: var(--mz-text-on-accent); background: var(--mz-button-primary); }
 .primary-button:hover:not(:disabled) { filter: brightness(1.08); }
-.add-message-wide { width: 100%; margin-top: 16px; border: 1px dashed var(--mz-border-focus); color: var(--mz-text-primary); background: transparent; }
+.add-message-wide { display: block; width: 100%; margin-top: 16px; border: 1px dashed var(--mz-border-focus); color: var(--mz-text-primary); background: transparent; }
 .add-message-wide:hover:not(:disabled) { border-style: solid; background: var(--mz-bg-hover); }
 
 .sequence-preview { display: grid; gap: 14px; }
