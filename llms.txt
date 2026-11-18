@@ -1,6 +1,6 @@
 # MezonHook
 
-MezonHook is a static React/Vite Channel Webhook composer. One strict version 3 project model drives its visual form, preview, raw JSON, generated samples, local storage, import/export, and ordered delivery.
+MezonHook is a static React/Vite dual-mode composer. Channel Webhook mode uses a strict version 3 project for direct delivery. Bot SDK mode uses a strict version 2 project and generates an authenticated JavaScript sender. The modes keep independent local drafts and imports route by version.
 
 ## Public app
 
@@ -8,6 +8,11 @@ MezonHook is a static React/Vite Channel Webhook composer. One strict version 3 
 - User guide: docs/USAGE.md
 - Live evidence and support matrix: docs/LIVE-VERIFICATION.md
 - Deployment: docs/DEPLOYMENT.md
+
+## Modes
+
+- Channel Webhook v3: ordered `t`, `mk`, `mentions`, `images`, and `hg`; raw JSON/cURL; named targets; browser delivery.
+- Bot SDK v2: ordered content, embeds, fields, buttons, input/select/radio/date/animation payloads; full generated JavaScript using environment credentials. Interaction handlers are intentionally not generated.
 
 ## Supported Channel Webhook envelope
 
@@ -28,11 +33,14 @@ Ranges are zero-based, start-inclusive, end-exclusive, and must remain inside `t
 
 ## Important boundaries
 
-- Fresh projects use message text `Deployment completed successfully.` and target name `Production alerts`; stored and imported values are preserved.
+- Fresh webhook projects use a meaningful rich demo that exposes every supported field; its mention/channel IDs are illustrative. Stored and imported values are preserved.
 - Desktop uses natural document scrolling. A preview is sticky below the header only while its full content fits the remaining viewport; oversized previews use normal flow without nested scrolling. Layouts at or below 1000px use Compose/Preview tabs and normal pane flow.
+- Both preview modes use scoped Mezon-like conversation styling; it does not leak into editor controls.
 - Webhook URLs are memory-only secrets and are excluded from storage and exports.
-- The active webhook UI does not claim support for bot-only embeds or interactive components.
-- The generated Bot SDK sample maps content, mentions, and attachments to the three `channel.send` arguments.
+- The webhook and Bot projects use separate storage keys. Invalid stored JSON is left untouched rather than silently overwritten.
+- Import routes v2 to Bot SDK and v3 to Channel Webhook; export saves only the active mode.
+- Generated Bot SDK code reads `MEZON_BOT_ID`, `MEZON_BOT_TOKEN`, and `MEZON_CHANNEL_ID` and preserves message order.
+- Clipboard feedback never claims success after both native and fallback copy methods fail.
 - Bot-only embed, button, input, select, radio, and date-picker rendering was visually verified. Interaction handlers were not registered in the audit bot. Animation remains unverified.
 - Node.js 20–23 is supported for local verification; Node.js 24 is excluded because of the current Mezon SDK development dependency.
 
