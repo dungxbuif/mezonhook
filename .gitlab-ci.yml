@@ -1,26 +1,19 @@
+stages: [validate, image, promote]
+
 workflow:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH'
-    - if: '$CI_COMMIT_TAG =~ /^(dev|staging|prod)-[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$/'
+    - if: '$CI_COMMIT_REF_PROTECTED == "true" && $CI_COMMIT_TAG =~ /^prod-[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$/'
+    - if: '$CI_COMMIT_REF_PROTECTED == "true" && $CI_COMMIT_TAG =~ /^(dev|staging)-[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$/'
     - when: never
 
-stages: [validate, image, promote]
-
-variables:
-  RELEASE_BRANCH: main
-  LAB_REGISTRY_HOST: registry-gitlab.dungxbuif.com
-  DOCKER_HOST: tcp://docker:2376
-  DOCKER_TLS_CERTDIR: /certs
-  DOCKER_TLS_VERIFY: "1"
-  DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
-  DOCKER_DRIVER: overlay2
-  DOCKER_BUILDKIT: "1"
+default:
+  tags: [ci-build]
 
 validate:
-  stage: validate
   image: node:20-bookworm-slim
-  tags: [homelab-mac]
+  stage: validate
   script:
     - npm ci
     - npm install --no-save --package-lock=false "@rollup/rollup-linux-x64-gnu@4.63.1"
@@ -29,15 +22,19 @@ validate:
 
 release_branch_guard:
   stage: validate
-  image: alpine:3.20
-  tags: [homelab-mac]
+  image:
+    name: alpine/git:2.47.2
+    entrypoint: [""]
+  variables:
+    GIT_DEPTH: "0"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^(dev|staging|prod)-[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$/'
+    - if: '$CI_COMMIT_REF_PROTECTED == "true" && $CI_COMMIT_TAG =~ /^prod-[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$/'
+    - if: '$CI_COMMIT_REF_PROTECTED == "true" && $CI_COMMIT_TAG =~ /^(dev|staging)-[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$/'
     - when: never
   script:
-    - apk add --no-cache git
-    - git fetch --no-tags origin "$RELEASE_BRANCH"
-    - git merge-base --is-ancestor "$CI_COMMIT_SHA" "origin/$RELEASE_BRANCH"
+    - test "$CI_DEFAULT_BRANCH" = main
+    - git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
+    - git merge-base --is-ancestor "$CI_COMMIT_SHA" refs/remotes/origin/main
 
 publish_image:
   stage: image
@@ -45,39 +42,65 @@ publish_image:
   services:
     - name: docker:27.5.1-dind-rootless
       alias: docker
-  tags: [homelab-mac]
-  needs:
-    - job: validate
-    - job: release_branch_guard
-      optional: true
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: /certs
+    DOCKER_TLS_VERIFY: "1"
+    DOCKER_CERT_PATH: /certs/client
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^(dev|staging|prod)-[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$/'
+    - if: '$CI_COMMIT_REF_PROTECTED == "true" && $CI_COMMIT_TAG =~ /^prod-[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$/'
+    - if: '$CI_COMMIT_REF_PROTECTED == "true" && $CI_COMMIT_TAG =~ /^(dev|staging)-[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$/'
     - when: never
   script: |
+    set -eu
+    if [ -n "${CI_COMMIT_TAG:-}" ]; then
+      : "${LAB_REGISTRY_HOST:?LAB_REGISTRY_HOST is required}"
+      : "${LAB_REGISTRY_PUSH_USER:?LAB_REGISTRY_PUSH_USER is required}"
+      : "${LAB_REGISTRY_PUSH_PASSWORD:?LAB_REGISTRY_PUSH_PASSWORD is required}"
+      repository="$LAB_REGISTRY_HOST/$CI_PROJECT_PATH"
+      image="$repository:$CI_COMMIT_SHA"
+    else
+      image="homelab-local/mezonhook:$CI_COMMIT_SHA"
+    fi
     docker info
-    image="$LAB_REGISTRY_HOST/$CI_PROJECT_PATH:$CI_COMMIT_TAG"
-    printf '%s' "$LAB_REGISTRY_PUSH_PASSWORD" | docker login "$LAB_REGISTRY_HOST" --username "$LAB_REGISTRY_PUSH_USER" --password-stdin
-    docker build --pull --platform linux/amd64 -t "$image" .
-    docker run --rm "$image" wget -qO- --timeout=3 http://127.0.0.1:8080/ >/dev/null
-    docker push "$image"
-    digest_ref="$(docker image inspect "$image" --format '{{index .RepoDigests 0}}')"
-    printf 'RELEASE_IMAGE=%s\nRELEASE_DIGEST=%s\n' "${digest_ref%@*}" "${digest_ref#*@}" > release.env
+    docker build --platform linux/amd64 --pull --tag "$image" .
+    container=$(docker run --detach --rm --network none "$image")
+    trap 'docker stop "$container" >/dev/null 2>&1 || true' EXIT
+    for attempt in $(seq 1 15); do
+      if docker exec "$container" wget -qO- --timeout=3 http://127.0.0.1:8080/ >/dev/null; then
+        break
+      fi
+      test "$attempt" -lt 15
+      sleep 1
+    done
+    if [ -n "${CI_COMMIT_TAG:-}" ]; then
+      printf '%s' "$LAB_REGISTRY_PUSH_PASSWORD" | docker login "$LAB_REGISTRY_HOST" --username "$LAB_REGISTRY_PUSH_USER" --password-stdin
+      docker push "$image"
+      digest_ref=$(docker image inspect "$image" --format '{{range .RepoDigests}}{{println .}}{{end}}' |
+        awk -v repo="$repository" 'index($0, repo "@sha256:") == 1 { print; exit }')
+      digest=${digest_ref#*@}
+      printf '%s\n' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$'
+      docker tag "$image" "$repository:$CI_COMMIT_TAG"
+      docker push "$repository:$CI_COMMIT_TAG"
+      printf 'RELEASE_IMAGE=%s\nRELEASE_DIGEST=%s\n' "$repository" "$digest" > release.env
+    fi
   artifacts:
     reports:
       dotenv: release.env
     expire_in: 30 days
   after_script:
-    - docker logout "$LAB_REGISTRY_HOST" >/dev/null 2>&1 || true
+    - if [ -n "${LAB_REGISTRY_HOST:-}" ]; then docker logout "$LAB_REGISTRY_HOST" >/dev/null 2>&1 || true; fi
 
 promote:homelab-ops:
   stage: promote
-  image: alpine/git:2.47.2
-  tags: [homelab-mac]
+  image:
+    name: alpine/git:2.47.2
+    entrypoint: [""]
   needs:
     - job: publish_image
       artifacts: true
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^prod-[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$/'
+    - if: '$CI_COMMIT_REF_PROTECTED == "true" && $CI_COMMIT_TAG =~ /^prod-[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$/'
     - when: never
   script:
     - sh scripts/promote-homelab-ops.sh
