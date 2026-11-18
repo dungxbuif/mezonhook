@@ -1,5 +1,9 @@
-import { type MessageDraft, toMezonContent, validateDraft } from '@mezonhook/schema';
-import { normalizeDraft } from './draft-storage';
+import {
+  toChannelWebhookEnvelope,
+  validateChannelWebhookMessage,
+  type ChannelWebhookEnvelope,
+  type ChannelWebhookMessage,
+} from '@mezonhook/schema';
 
 export function validateWebhookUrl(value: string): boolean {
   try {
@@ -20,61 +24,60 @@ export function validateWebhookUrl(value: string): boolean {
   }
 }
 
-export async function sendWebhook(url: string, draft: MessageDraft, fetcher: typeof fetch = fetch): Promise<void> {
-  if (!validateWebhookUrl(url)) throw new Error('Enter a valid Mezon Channel Webhook URL.');
-  if (!validateDraft(draft).valid) throw new Error('This message draft is invalid. Please correct it before sending.');
-  const sanitizedDraft = normalizeDraft(draft);
-
-  let response: Response;
-  try {
-    response = await fetcher(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'hook', message: toMezonContent(sanitizedDraft) }),
-    });
-  } catch {
-    throw new Error('Could not reach Mezon. Check your connection or browser CORS settings and try again.');
-  }
-
-  if (!response.ok) throw new Error('Mezon could not accept the message. Please check the channel webhook and try again.');
-}
-
-export type ChannelWebhookEnvelope = { type: 'hook'; message: Record<string, unknown> };
-
 export function parseChannelWebhookEnvelope(text: string): ChannelWebhookEnvelope {
   let value: unknown;
   try { value = JSON.parse(text); } catch { throw new Error('Payload JSON is invalid.'); }
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Payload must be a JSON object.');
   const payload = value as Record<string, unknown>;
-  if (payload.type !== 'hook' || !payload.message || typeof payload.message !== 'object' || Array.isArray(payload.message)) throw new Error('Payload must contain type "hook" and a message object.');
-  if (typeof (payload.message as Record<string, unknown>).t !== 'string') throw new Error('message.t must be a string.');
-  return { type: 'hook', message: payload.message as Record<string, unknown> };
+  if (Object.keys(payload).sort().join(',') !== 'message,type' || payload.type !== 'hook') {
+    throw new Error('Payload must contain only type "hook" and message.');
+  }
+  const validation = validateChannelWebhookMessage(payload.message);
+  if (!validation.valid) throw new Error(validation.errors.join(' '));
+  return toChannelWebhookEnvelope(payload.message as ChannelWebhookMessage);
 }
 
-export async function sendChannelWebhookPayload(url: string, payload: ChannelWebhookEnvelope, fetcher: typeof fetch = fetch): Promise<void> {
+export async function sendChannelWebhookPayload(
+  url: string,
+  payload: ChannelWebhookEnvelope,
+  fetcher: typeof fetch = fetch,
+): Promise<void> {
   if (!validateWebhookUrl(url)) throw new Error('Enter a valid Mezon Channel Webhook URL.');
   let response: Response;
-  try { response = await fetcher(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); }
-  catch { throw new Error('Could not reach Mezon. Check your connection or browser CORS settings and try again.'); }
+  try {
+    response = await fetcher(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    throw new Error('Could not reach Mezon. Check your connection or browser CORS settings and try again.');
+  }
   if (!response.ok) throw new Error('Mezon could not accept the message. Please check the channel webhook and try again.');
 }
 
 export async function sendWebhookBatch(
   urls: string[],
-  drafts: MessageDraft[],
+  messages: ChannelWebhookMessage[],
   fetcher: typeof fetch = fetch,
 ): Promise<number> {
   if (urls.length === 0) throw new Error('Select at least one Mezon webhook target.');
-  if (drafts.length === 0 || drafts.some((draft) => !validateDraft(draft).valid)) {
+  if (messages.length === 0 || messages.some((message) => !validateChannelWebhookMessage(message).valid)) {
     throw new Error('Every message must be valid before sending.');
   }
   if (urls.some((url) => !validateWebhookUrl(url))) throw new Error('Enter valid Mezon Channel Webhook URLs.');
-
   let deliveries = 0;
-  for (const draft of drafts) {
+  const total = urls.length * messages.length;
+  for (const message of messages) {
+    const envelope = toChannelWebhookEnvelope(message);
     for (const url of urls) {
-      await sendWebhook(url, draft, fetcher);
-      deliveries += 1;
+      try {
+        await sendChannelWebhookPayload(url, envelope, fetcher);
+        deliveries += 1;
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : 'Mezon rejected the delivery.';
+        throw new Error(`Stopped after ${deliveries} of ${total} deliveries. ${reason}`);
+      }
     }
   }
   return deliveries;

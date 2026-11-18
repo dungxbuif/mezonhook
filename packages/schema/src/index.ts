@@ -519,3 +519,185 @@ export function toMezonContent(draft: MessageDraft): MezonContent {
     ],
   };
 }
+
+export interface ChannelWebhookRange {
+  s: number;
+  e: number;
+}
+
+export interface ChannelWebhookMarkdown extends ChannelWebhookRange {
+  type: 'pre' | 'lk';
+}
+
+export interface ChannelWebhookMention extends ChannelWebhookRange {
+  username?: string;
+  user_id?: string;
+}
+
+export interface ChannelWebhookImage {
+  fn: string;
+  sz: number;
+  url: string;
+  ft: string;
+  w: number;
+  h: number;
+}
+
+export interface ChannelWebhookHashtag extends ChannelWebhookRange {
+  channelId: string;
+}
+
+export interface ChannelWebhookMessage {
+  t: string;
+  mk: ChannelWebhookMarkdown[];
+  mentions: ChannelWebhookMention[];
+  images: ChannelWebhookImage[];
+  hg: ChannelWebhookHashtag[];
+}
+
+export interface ChannelWebhookProject {
+  version: 3;
+  name: string;
+  messages: ChannelWebhookMessage[];
+  targets: WebhookTarget[];
+}
+
+export interface ChannelWebhookEnvelope {
+  type: 'hook';
+  message: ChannelWebhookMessage;
+}
+
+const exactKeys = (value: Record<string, unknown>, keys: readonly string[]): boolean => {
+  const actual = Object.keys(value).sort();
+  const expected = [...keys].sort();
+  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
+};
+
+const isNonNegativeInteger = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 0;
+
+function validRange(value: Record<string, unknown>, textLength: number): boolean {
+  return isNonNegativeInteger(value.s)
+    && isNonNegativeInteger(value.e)
+    && (value.s as number) < (value.e as number)
+    && (value.e as number) <= textLength;
+}
+
+function validHttpsUrl(value: unknown): boolean {
+  if (typeof value !== 'string') return false;
+  try { return new URL(value).protocol === 'https:'; } catch { return false; }
+}
+
+export function validateChannelWebhookMessage(value: unknown): ValidationResult {
+  const errors: string[] = [];
+  if (!isRecord(value)) return { valid: false, errors: ['Message must be an object.'] };
+  if (!exactKeys(value, ['t', 'mk', 'mentions', 'images', 'hg'])) errors.push('Message contains unsupported or missing fields.');
+  if (!isStringWithin(value.t, 2_000, true)) errors.push('message.t is required and must be 2,000 characters or fewer.');
+  const textLength = typeof value.t === 'string' ? value.t.length : 0;
+
+  if (!Array.isArray(value.mk) || value.mk.some((entry) => !isRecord(entry)
+    || !exactKeys(entry, ['type', 's', 'e'])
+    || !['pre', 'lk'].includes(entry.type as string)
+    || !validRange(entry, textLength))) {
+    errors.push('message.mk must contain valid pre or lk ranges inside message.t.');
+  }
+
+  if (!Array.isArray(value.mentions) || value.mentions.some((entry) => {
+    if (!isRecord(entry) || !validRange(entry, textLength)) return true;
+    const hasUsername = isStringWithin(entry.username, 100, true);
+    const hasUserId = isStringWithin(entry.user_id, 100, true);
+    const keys = hasUsername ? ['username', 's', 'e'] : ['user_id', 's', 'e'];
+    return hasUsername === hasUserId || !exactKeys(entry, keys);
+  })) {
+    errors.push('message.mentions must contain one username or user_id and a valid range.');
+  }
+
+  if (!Array.isArray(value.images) || value.images.some((entry) => !isRecord(entry)
+    || !exactKeys(entry, ['fn', 'sz', 'url', 'ft', 'w', 'h'])
+    || !isStringWithin(entry.fn, 256, true)
+    || !isStringWithin(entry.ft, 100, true)
+    || !validHttpsUrl(entry.url)
+    || !isNonNegativeInteger(entry.sz)
+    || !isNonNegativeInteger(entry.w)
+    || !isNonNegativeInteger(entry.h))) {
+    errors.push('message.images must contain complete HTTPS attachment metadata.');
+  }
+
+  if (!Array.isArray(value.hg) || value.hg.some((entry) => !isRecord(entry)
+    || !exactKeys(entry, ['channelId', 's', 'e'])
+    || !isStringWithin(entry.channelId, 100, true)
+    || !validRange(entry, textLength))) {
+    errors.push('message.hg must contain a channelId and a valid range.');
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+export function createChannelWebhookMessage(text = 'Hello from MezonHook!'): ChannelWebhookMessage {
+  return { t: text, mk: [], mentions: [], images: [], hg: [] };
+}
+
+export function cloneChannelWebhookMessage(message: ChannelWebhookMessage): ChannelWebhookMessage {
+  return {
+    t: message.t,
+    mk: message.mk.map((entry) => ({ type: entry.type, s: entry.s, e: entry.e })),
+    mentions: message.mentions.map((entry) => ({
+      ...(entry.username !== undefined ? { username: entry.username } : { user_id: entry.user_id }),
+      s: entry.s,
+      e: entry.e,
+    })),
+    images: message.images.map((entry) => ({ fn: entry.fn, sz: entry.sz, url: entry.url, ft: entry.ft, w: entry.w, h: entry.h })),
+    hg: message.hg.map((entry) => ({ channelId: entry.channelId, s: entry.s, e: entry.e })),
+  };
+}
+
+export function createChannelWebhookProject(): ChannelWebhookProject {
+  return {
+    version: 3,
+    name: 'Untitled webhook project',
+    messages: [createChannelWebhookMessage()],
+    targets: [{ id: createTargetId(1), name: 'Mezon channel' }],
+  };
+}
+
+export function cloneChannelWebhookProject(project: ChannelWebhookProject): ChannelWebhookProject {
+  return {
+    version: 3,
+    name: project.name,
+    messages: project.messages.map(cloneChannelWebhookMessage),
+    targets: project.targets.map((target) => ({ id: target.id, name: target.name })),
+  };
+}
+
+export function validateChannelWebhookProject(value: unknown): ValidationResult {
+  if (!isRecord(value)) return { valid: false, errors: ['Project must be an object.'] };
+  const errors: string[] = [];
+  if (!exactKeys(value, ['version', 'name', 'messages', 'targets'])) errors.push('Project contains unsupported or missing fields.');
+  if (value.version !== 3) errors.push('Project version must be 3.');
+  if (!isStringWithin(value.name, 100, true)) errors.push('Project name is required and must be 100 characters or fewer.');
+  if (!Array.isArray(value.messages) || value.messages.length < 1 || value.messages.length > 20) {
+    errors.push('A project must have between 1 and 20 messages.');
+  } else if (value.messages.some((message) => !validateChannelWebhookMessage(message).valid)) {
+    errors.push('Every project message must be a valid Channel Webhook message.');
+  }
+  if (!Array.isArray(value.targets) || value.targets.length < 1 || value.targets.length > 10) {
+    errors.push('A project must have between 1 and 10 targets.');
+  } else {
+    const ids = new Set<string>();
+    for (const target of value.targets) {
+      if (!isRecord(target) || !exactKeys(target, ['id', 'name'])
+        || !isStringWithin(target.id, 100, true) || !isStringWithin(target.name, 100, true)
+        || ids.has(target.id as string)) {
+        errors.push('Each target must have a unique id and name of 100 characters or fewer.');
+        break;
+      }
+      ids.add(target.id as string);
+    }
+  }
+  return { valid: errors.length === 0, errors };
+}
+
+export function toChannelWebhookEnvelope(message: ChannelWebhookMessage): ChannelWebhookEnvelope {
+  const validation = validateChannelWebhookMessage(message);
+  if (!validation.valid) throw new Error(validation.errors.join(' '));
+  return { type: 'hook', message: cloneChannelWebhookMessage(message) };
+}

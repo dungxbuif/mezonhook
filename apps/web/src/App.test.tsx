@@ -4,15 +4,6 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 
-function readBlobText(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.addEventListener('load', () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Could not read export.')));
-    reader.addEventListener('error', () => reject(new Error('Could not read export.')));
-    reader.readAsText(blob);
-  });
-}
-
 afterEach(() => {
   cleanup();
   localStorage.clear();
@@ -21,224 +12,130 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('MezonHook project builder', () => {
-  it('offers copyable webhook and Bot SDK code samples for the live payload', () => {
-    render(<App />);
-    expect(screen.getByRole('button', { name: 'Copy cURL' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Copy JS Bot SDK' })).toBeInTheDocument();
-    expect(screen.getByText(/Keep message\.t as plain text/)).toBeInTheDocument();
-  });
-  // Mutation caught: the builder falls back to a long ungrouped form instead of collapsible composer sections.
-  it('uses collapsible composer cards for the selected message', async () => {
+describe('MezonHook reliable composer', () => {
+  it('uses the visual form as the source for preview and raw JSON', async () => {
     const user = userEvent.setup();
     render(<App />);
-
-    expect(screen.getByRole('button', { name: 'Content' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Embeds' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Fields' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Components' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Advanced' })).toBeInTheDocument();
-    expect(screen.queryByLabelText('Card title')).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'Embeds' }));
-
-    expect(screen.getByLabelText('Card title')).toBeInTheDocument();
+    const input = screen.getByLabelText('Message text');
+    await user.clear(input);
+    await user.type(input, 'Đồng bộ một nguồn');
+    expect(screen.getByRole('article', { name: 'Message 1 preview' })).toHaveTextContent('Đồng bộ một nguồn');
+    await user.click(screen.getByText('Advanced JSON and code'));
+    expect((screen.getByRole('textbox', { name: 'Live payload' }) as HTMLTextAreaElement).value).toContain('Đồng bộ một nguồn');
   });
 
-  // Mutation caught: visual accordion sections drift into bespoke, nested heading controls.
-  it('uses one compact semantic header primitive for every composer section', async () => {
+  it('imports valid raw JSON back into the same visual form', async () => {
     const user = userEvent.setup();
     render(<App />);
-    const labels = ['Content', 'Embeds', 'Fields', 'Components', 'Advanced'];
-
-    for (const label of labels) expect(screen.getByRole('button', { name: label })).toHaveClass('accordion-header');
-
-    await user.click(screen.getByRole('button', { name: 'Fields' }));
-    await user.click(screen.getByRole('button', { name: 'Components' }));
-    expect(document.querySelector('#message-0-fields h2')).toBeNull();
-    expect(document.querySelector('#message-0-components h2')).toBeNull();
+    await user.click(screen.getByText('Advanced JSON and code'));
+    const raw = screen.getByRole('textbox', { name: 'Live payload' });
+    fireEvent.change(raw, { target: { value: JSON.stringify({ type: 'hook', message: { t: 'Raw becomes form', mk: [], mentions: [], images: [], hg: [] } }) } });
+    expect(screen.getByLabelText('Message text')).toHaveValue('Raw becomes form');
+    expect(screen.getByRole('article', { name: 'Message 1 preview' })).toHaveTextContent('Raw becomes form');
   });
 
-  // Mutation caught: documented Mezon interactive fields can no longer be added, edited, or previewed.
-  it('adds and previews a documented Select interactive field', async () => {
+  it('preserves the last valid form and disables every send control for invalid JSON', async () => {
     const user = userEvent.setup();
     render(<App />);
-
-    await user.click(screen.getByRole('button', { name: 'Fields' }));
-    await user.click(screen.getByRole('button', { name: 'Add Select' }));
-
-    expect(screen.getByLabelText('Interactive ID')).toHaveValue('select-1');
-    expect(screen.getByTestId('interactive-preview-2')).toHaveTextContent('New option');
-    await user.click(screen.getByRole('button', { name: 'Remove interactive block 1' }));
-    expect(screen.queryByTestId('interactive-preview-2')).not.toBeInTheDocument();
+    await user.click(screen.getByText('Advanced JSON and code'));
+    const raw = screen.getByRole('textbox', { name: 'Live payload' });
+    fireEvent.change(raw, { target: { value: '{bad' } });
+    expect(screen.getByLabelText('Message text')).toHaveValue('Hello from MezonHook!');
+    for (const button of screen.getAllByRole('button', { name: /Send/ })) expect(button).toBeDisabled();
   });
 
-  // Mutation caught: the builder loses its independently addressable two-pane project workspace.
-  it('exposes the sequential project editor and preview as one builder workspace', () => {
-    render(<App />);
-
-    expect(screen.getByTestId('project-editor')).toHaveAttribute('data-builder-layout', 'two-pane-sequence');
-  });
-
-  // Mutation caught: delivery and help return to separate topbar screens instead of staying in the builder flow.
-  it('keeps delivery targets and help inline below the message editor', () => {
-    render(<App />);
-
-    const delivery = screen.getByRole('heading', { name: 'Delivery targets' });
-    expect(delivery.closest('.editor-pane')).not.toBeNull();
-    expect(screen.getByLabelText('Webhook URL for Mezon channel')).toHaveAttribute('type', 'password');
-    expect(screen.getByText('Help and webhook guidance')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Config' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Help' })).not.toBeInTheDocument();
-  });
-
-  it('places help guidance before the payload and delivery configuration', () => {
-    render(<App />);
-
-    const editor = screen.getByRole('region', { name: 'Message editors' });
-    const help = screen.getByText('Help and webhook guidance');
-    const payload = screen.getByRole('heading', { name: 'Live payload' });
-    const delivery = screen.getByRole('heading', { name: 'Delivery targets' });
-
-    expect(editor.contains(help)).toBe(true);
-    expect(help.compareDocumentPosition(payload) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(help.compareDocumentPosition(delivery) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
-
-  it('uses one consistent shell for guide, payload, and delivery sections', () => {
-    render(<App />);
-
-    expect(screen.getByText('Help and webhook guidance').closest('.builder-section')).not.toBeNull();
-    expect(screen.getByRole('region', { name: 'Live payload' })).toHaveClass('builder-section');
-    expect(screen.getByRole('region', { name: 'Delivery targets' })).toHaveClass('builder-section');
-  });
-
-  it('keeps the import action label isolated from form-label spacing', () => {
-    render(<App />);
-
-    expect(screen.getByText('Import')).toHaveClass('topbar-action-label');
-  });
-
-  it('marks the header as the Mezon single-row channel topbar', () => {
-    render(<App />);
-
-    expect(document.querySelector('main > header')).toHaveClass('mezon-channel-topbar');
-  });
-
-  // Mutation caught: appearance selection stops using a persisted, non-sensitive root theme preference.
-  it('defaults to Dark and persists an inline appearance preference', async () => {
+  it('explains invalid form content and hides runnable samples', async () => {
     const user = userEvent.setup();
     render(<App />);
-
-    const appearance = screen.getByLabelText('Appearance theme');
-    expect(appearance).toHaveValue('dark');
-    expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
-
-    await user.selectOptions(appearance, 'purple-haze');
-
-    expect(document.documentElement).toHaveAttribute('data-theme', 'purple-haze');
-    expect(localStorage.getItem('mezonhook:appearance')).toBe('purple-haze');
+    await user.clear(screen.getByLabelText('Message text'));
+    await user.click(screen.getByText('Advanced JSON and code'));
+    expect(screen.getByRole('alert')).toHaveTextContent('message.t');
+    expect(screen.queryByText('Runnable samples')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Send 1 message' })).toBeDisabled();
   });
 
-  // Mutation caught: adding a project message does not add it to the ordered preview sequence.
-  it('adds a message and renders both messages in sequence preview', async () => {
+  it('restores and selects the first target from a stored version 3 project', () => {
+    localStorage.setItem('mezonhook:project:v3', JSON.stringify({
+      version: 3,
+      name: 'Stored',
+      messages: [{ t: 'Stored message', mk: [], mentions: [], images: [], hg: [] }],
+      targets: [{ id: 'target-4', name: 'Stored channel' }],
+    }));
+    render(<App />);
+    expect(screen.getByRole('checkbox', { name: 'Send to Stored channel' })).toBeChecked();
+  });
+
+  it('provides keyboard-operable move controls in addition to drag', async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole('button', { name: 'Add Message' }));
-    expect(screen.getAllByTestId('message-preview')).toHaveLength(2);
+    await user.click(screen.getByRole('button', { name: 'Add message' }));
+    const textboxes = screen.getAllByLabelText('Message text');
+    await user.clear(textboxes[1]);
+    await user.type(textboxes[1], 'Second first');
+    await user.click(screen.getByRole('button', { name: 'Move message 2 up' }));
+    expect(screen.getAllByLabelText('Message text')[0]).toHaveValue('Second first');
   });
 
-  // Mutation caught: template actions remain in the builder or a new message is pre-filled as a template.
-  it('adds a blank message without exposing template actions', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-
-    expect(screen.queryByRole('button', { name: 'Release note' })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Add Message' }));
-
-    expect(within(screen.getAllByTestId(/message-editor-/)[1]).getByLabelText('Body')).toHaveValue('');
-  });
-
-  // Mutation caught: sequential editor headers do not update the shared project delivery order after a native drag-and-drop.
-  it('reorders project messages by dragging a sequential editor header', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    await user.click(screen.getByRole('button', { name: 'Add Message' }));
-    const editors = screen.getAllByTestId(/message-editor-/);
-    await user.click(within(editors[1]).getByRole('button', { name: 'Embeds' }));
-    await user.clear(within(editors[1]).getByLabelText('Card title'));
-    await user.type(within(editors[1]).getByLabelText('Card title'), 'Second message first');
-    const headers = screen.getAllByTestId(/message-editor-/).map((editor) => editor.querySelector('header')!);
-    const dataTransfer = { effectAllowed: 'move', dropEffect: 'move', setData: vi.fn(), getData: vi.fn(() => '1') };
-
-    fireEvent.dragStart(headers[1], { dataTransfer });
-    fireEvent.dragOver(headers[0], { dataTransfer });
-    fireEvent.drop(headers[0], { dataTransfer });
-
-    expect(screen.getAllByTestId(/message-editor-/)[0]).toHaveTextContent('Second message first');
-    expect(screen.getAllByTestId('message-preview')[0]).toHaveTextContent('Second message first');
-  });
-
-  // Mutation caught: channel target URLs become visible or move into persisted project state.
-  it('keeps target URLs masked and session-only in Config', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    const urlInput = screen.getByLabelText('Webhook URL for Mezon channel');
-    await user.type(urlInput, 'https://webhook.mezon.ai/webhooks/123/session-secret');
-    expect(urlInput).toHaveAttribute('type', 'password');
-    expect(localStorage.getItem('mezonhook:project:v2')).not.toContain('session-secret');
-  });
-
-  // Mutation caught: the in-product setup path loses the official Mezon documentation link.
-  it('shows in-app help with official Mezon documentation', async () => {
-    render(<App />);
-    expect(screen.getByRole('link', { name: 'Open Mezon documentation' })).toHaveAttribute('href', 'https://mezon.ai/docs/vi/');
-  });
-
-  // Mutation caught: project import does not replace the editable project with validated project JSON.
-  it('imports a project and renders its message sequence', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    const project = {
-      version: 2,
-      name: 'Imported project',
-      messages: [
-        { body: 'First import', card: { color: '#5865F2', title: 'First', description: 'First imported card.', author: '', thumbnail: '', image: '', fields: [] }, buttons: [] },
-        { body: 'Second import', card: { color: '#5865F2', title: 'Second', description: 'Second imported card.', author: '', thumbnail: '', image: '', fields: [] }, buttons: [] },
-      ],
-      targets: [{ id: 'target-1', name: 'Imported channel' }],
-    };
-    await user.upload(screen.getByLabelText('Import project'), new File([JSON.stringify(project)], 'project.json', { type: 'application/json' }));
-    expect(await screen.findByText('MezonHook')).toBeInTheDocument();
-    expect(screen.getAllByTestId('message-preview')).toHaveLength(2);
-  });
-
-  // Mutation caught: export includes a session-only target secret instead of strict project data.
-  it('exports project JSON without a configured target URL', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    await user.type(screen.getByLabelText('Webhook URL for Mezon channel'), 'https://webhook.mezon.ai/webhooks/123/session-secret');
-    let exportedBlob: Blob | undefined;
-    class TestUrl extends URL {
-      static createObjectURL(blob: Blob) { exportedBlob = blob; return 'blob:project'; }
-      static revokeObjectURL() {}
-    }
-    vi.stubGlobal('URL', TestUrl);
-    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-    await user.click(screen.getByRole('button', { name: 'Export project' }));
-    await waitFor(() => expect(exportedBlob).toBeDefined());
-    expect(await readBlobText(exportedBlob!)).not.toContain('session-secret');
-  });
-
-  // Mutation caught: batch delivery does not use the selected session target or expose its delivery result.
-  it('sends the project sequence to selected configured targets', async () => {
+  it('sends every project message in order through one real submit path', async () => {
     const user = userEvent.setup();
     const fetcher = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 204 }));
     render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Add message' }));
+    const textboxes = screen.getAllByLabelText('Message text');
+    await user.clear(textboxes[0]);
+    await user.type(textboxes[0], 'First');
+    await user.clear(textboxes[1]);
+    await user.type(textboxes[1], 'Second');
     await user.type(screen.getByLabelText('Webhook URL for Mezon channel'), 'https://webhook.mezon.ai/webhooks/123/session-secret');
-    await user.click(screen.getByRole('button', { name: 'Send project' }));
-    expect(await screen.findByText('Sent the live payload to 1 target.')).toBeInTheDocument();
-    expect(fetcher).toHaveBeenCalledOnce();
-    expect(screen.getByLabelText('Webhook URL for Mezon channel')).toHaveValue('');
+    await user.click(screen.getByRole('button', { name: 'Send 2 messages' }));
+    expect(await screen.findByText('Sent 2 messages to 1 target (2 deliveries).')).toBeInTheDocument();
+    expect(fetcher.mock.calls.map(([, request]) => JSON.parse((request as RequestInit).body as string).message.t)).toEqual(['First', 'Second']);
+  });
+
+  it('keeps target secrets out of persisted project data', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const url = screen.getByLabelText('Webhook URL for Mezon channel');
+    await user.type(url, 'https://webhook.mezon.ai/webhooks/123/session-secret');
+    expect(url).toHaveAttribute('type', 'password');
+    await waitFor(() => expect(localStorage.getItem('mezonhook:project:v3')).not.toContain('session-secret'));
+  });
+
+  it('migrates an imported version 2 project without unsupported cards or buttons', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const legacy = {
+      version: 2,
+      name: 'Legacy',
+      messages: [{ body: 'Legacy body', card: { color: '#5865F2', title: 'Unsupported card', description: 'x', author: '', thumbnail: '', image: '', fields: [] }, buttons: [{ id: 'x', label: 'Unsupported button', style: 1 }] }],
+      targets: [{ id: 'target-1', name: 'Imported channel' }],
+    };
+    await user.upload(screen.getByLabelText('Import project'), new File([JSON.stringify(legacy)], 'project.json', { type: 'application/json' }));
+    await waitFor(() => expect(screen.getByLabelText('Message text')).toHaveValue('Legacy body'));
+    expect(screen.queryByText('Unsupported card')).not.toBeInTheDocument();
+    expect(screen.queryByText('Unsupported button')).not.toBeInTheDocument();
+  });
+
+  it('keeps secondary protocol tooling in progressive disclosure', () => {
+    render(<App />);
+    expect(screen.getByText('Advanced JSON and code').closest('details')).not.toHaveAttribute('open');
+    for (const name of ['Formatting', 'Mentions', 'Images', 'Channel references']) {
+      expect(screen.getByText(name).closest('details')).not.toHaveAttribute('open');
+    }
+    expect(screen.getByRole('heading', { name: 'Compose webhook messages' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Delivery' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /Send 1 message/ })).toHaveLength(1);
+  });
+
+  it('edits all five documented webhook field groups', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const editor = screen.getByRole('group', { name: 'Message 1 fields' });
+    for (const name of ['Formatting', 'Mentions', 'Images', 'Channel references']) await user.click(within(editor).getByText(name));
+    for (const name of ['Add formatting', 'Add mention', 'Add image', 'Add channel reference']) await user.click(within(editor).getByRole('button', { name }));
+    expect(within(editor).getByLabelText('Formatting type 1')).toBeInTheDocument();
+    expect(within(editor).getByLabelText('Mention identity 1')).toBeInTheDocument();
+    expect(within(editor).getByLabelText('Image URL 1')).toBeInTheDocument();
+    expect(within(editor).getByLabelText('Channel ID 1')).toBeInTheDocument();
   });
 });

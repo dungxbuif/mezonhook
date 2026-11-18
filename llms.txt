@@ -1,0 +1,43 @@
+# MezonHook
+
+MezonHook is a static React/Vite Channel Webhook composer. One strict version 3 project model drives its visual form, preview, raw JSON, generated samples, local storage, import/export, and ordered delivery.
+
+## Public app
+
+- URL: https://mezonhook.dungxbuif.com/
+- User guide: docs/USAGE.md
+- Live evidence and support matrix: docs/LIVE-VERIFICATION.md
+- Deployment: docs/DEPLOYMENT.md
+
+## Supported Channel Webhook envelope
+
+```json
+{
+  "type": "hook",
+  "message": {
+    "t": "required text",
+    "mk": [{ "type": "pre or lk", "s": 0, "e": 1 }],
+    "mentions": [{ "user_id": "or username, exactly one", "s": 0, "e": 1 }],
+    "images": [{ "fn": "file.png", "sz": 1, "url": "https://...", "ft": "image/png", "w": 1, "h": 1 }],
+    "hg": [{ "channelId": "channel ID", "s": 0, "e": 1 }]
+  }
+}
+```
+
+Ranges are zero-based, start-inclusive, end-exclusive, and must remain inside `t`. Unknown or mistyped fields are rejected.
+
+## Important boundaries
+
+- Webhook URLs are memory-only secrets and are excluded from storage and exports.
+- The active webhook UI does not claim support for bot-only embeds or interactive components.
+- The generated Bot SDK sample maps content, mentions, and attachments to the three `channel.send` arguments.
+- Bot-only embed, button, input, select, radio, and date-picker rendering was visually verified. Interaction handlers were not registered in the audit bot. Animation remains unverified.
+- Node.js 20–23 is supported for local verification; Node.js 24 is excluded because of the current Mezon SDK development dependency.
+
+## Verification commands
+
+```bash
+npm test
+npm run build --workspace @mezonhook/web
+npm run verify:live -- --mode=dry-run
+```
