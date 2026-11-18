@@ -45,14 +45,14 @@ export default function App() {
   const [deliveryStatus, setDeliveryStatus] = useState<DeliveryStatus>(null);
   const [sending, setSending] = useState(false);
 
-  const skipInitialWebhookSave = useRef(true);
-  const skipInitialBotSave = useRef(true);
+  const initialWebhookProject = useRef(project);
+  const initialBotProject = useRef(botProject);
   useEffect(() => {
-    if (skipInitialWebhookSave.current) { skipInitialWebhookSave.current = false; return; }
+    if (project === initialWebhookProject.current) return;
     saveProject(project);
   }, [project]);
   useEffect(() => {
-    if (skipInitialBotSave.current) { skipInitialBotSave.current = false; return; }
+    if (botProject === initialBotProject.current) return;
     saveBotProject(botProject);
   }, [botProject]);
   useEffect(() => { saveComposerMode(mode); }, [mode]);

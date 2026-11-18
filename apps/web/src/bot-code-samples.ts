@@ -35,7 +35,10 @@ function embedBuilderSource(draft: MessageDraft, index: number): string[] {
   lines.push(`const ${variable} = ${variable}Builder.build();`);
   lines.push(`${variable}.color = ${json(draft.card.color)};`);
   draft.card.fields.forEach((field, fieldIndex) => {
-    if (field.inputs) lines.push(`${variable}.fields[${fieldIndex}].inputs = ${json(field.inputs)};`);
+    if (field.inputs) {
+      lines.push(`${variable}.fields[${fieldIndex}].inputs = ${json(field.inputs)};`);
+      lines.push(`${variable}.fields[${fieldIndex}].inline = ${field.inline};`);
+    }
   });
   return lines;
 }
@@ -81,9 +84,14 @@ const client = new MezonClient({
   botId: process.env.MEZON_BOT_ID,
   token: process.env.MEZON_BOT_TOKEN,
 });
-await client.login();
-const channel = await client.channels.fetch(process.env.MEZON_CHANNEL_ID);
+try {
+  await client.login();
+  const channel = await client.channels.fetch(process.env.MEZON_CHANNEL_ID);
 
-${messageBlocks.join('\n')}console.log('All Bot SDK messages sent.');
+${messageBlocks.join('\n')}  console.log('All Bot SDK messages sent.');
+} finally {
+  client.closeSocket();
+}
+process.exit(0);
 `;
 }

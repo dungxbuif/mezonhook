@@ -36,6 +36,11 @@ describe('Bot SDK project samples', () => {
       expect(source).toContain(method);
     }
     expect(source).toContain('EButtonMessageStyle.SUCCESS');
+    expect(source).toContain('embed1.fields[1].inline = false;');
+    expect(source).toContain('embed1.fields[2].inline = false;');
+    expect(source).toContain('finally {');
+    expect(source).toContain('client.closeSocket();');
+    expect(source).toContain('process.exit(0);');
     expect(source).not.toMatch(/botId:\s*['"][^'"]+['"]/);
     expect(source).not.toMatch(/token:\s*['"][^'"]+['"]/);
 

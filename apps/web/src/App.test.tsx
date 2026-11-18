@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { StrictMode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 
@@ -13,6 +14,21 @@ afterEach(() => {
 });
 
 describe('MezonHook reliable composer', () => {
+  it('does not overwrite malformed stored projects during StrictMode effect replay', async () => {
+    const malformedWebhook = '{"version":3,"messages":"recover-me"}';
+    const malformedBot = '{"version":2,"messages":"recover-me"}';
+    localStorage.setItem('mezonhook:project:v3', malformedWebhook);
+    localStorage.setItem('mezonhook:bot-project:v2', malformedBot);
+
+    render(<StrictMode><App /></StrictMode>);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Stored Channel Webhook project');
+    await waitFor(() => {
+      expect(localStorage.getItem('mezonhook:project:v3')).toBe(malformedWebhook);
+      expect(localStorage.getItem('mezonhook:bot-project:v2')).toBe(malformedBot);
+    });
+  });
+
   it('shows explicit Channel Webhook and Bot SDK modes with webhook selected by default', () => {
     render(<App />);
     expect(screen.getByRole('tab', { name: 'Channel Webhook' })).toHaveAttribute('aria-selected', 'true');
