@@ -6,6 +6,14 @@
     "apps/*"
   ],
   "scripts": {
-    "test": "npm test --workspaces"
+    "test": "npm test --workspaces",
+    "verify:live": "tsx scripts/verify-live-messages.mjs"
+  },
+  "engines": {
+    "node": ">=20 <24"
+  },
+  "devDependencies": {
+    "mezon-sdk": "^2.8.62",
+    "tsx": "^4.20.6"
   }
 }
